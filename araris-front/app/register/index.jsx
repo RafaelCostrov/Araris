@@ -139,19 +139,11 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
-  const [isCheckingCnpj, setIsCheckingCnpj] = useState(false);
-  const [cepLoading, setCepLoading] = useState(false);
-  const [cepFeedback, setCepFeedback] = useState("");
 
   function updateField(field, value) {
     setForm((currentForm) => ({ ...currentForm, [field]: value }));
     setErrors((currentErrors) => ({ ...currentErrors, [field]: "" }));
     setSubmitError("");
-
-    if (field === "cep") {
-      setCepFeedback("");
-    }
   }
 
   async function checkEmail() {
@@ -170,7 +162,6 @@ export default function Register() {
     }
 
     try {
-      setIsCheckingEmail(true);
       const data = await checkEmailAvailability(email);
 
       if (!data.available) {
@@ -185,8 +176,6 @@ export default function Register() {
       return true;
     } catch {
       return true;
-    } finally {
-      setIsCheckingEmail(false);
     }
   }
 
@@ -208,7 +197,6 @@ export default function Register() {
     }
 
     try {
-      setIsCheckingCnpj(true);
       const data = await checkCnpjAvailability(form.cnpj);
 
       if (!data.available) {
@@ -223,8 +211,6 @@ export default function Register() {
       return true;
     } catch {
       return true;
-    } finally {
-      setIsCheckingCnpj(false);
     }
   }
 
@@ -236,7 +222,6 @@ export default function Register() {
     const cepDigits = onlyDigits(form.cep);
 
     if (!cepDigits) {
-      setCepFeedback("");
       return;
     }
 
@@ -249,8 +234,6 @@ export default function Register() {
     }
 
     setErrors((currentErrors) => ({ ...currentErrors, cep: "" }));
-    setCepLoading(true);
-    setCepFeedback("");
 
     try {
       const response = await fetch(
@@ -274,14 +257,11 @@ export default function Register() {
         city: data.localidade || currentForm.city,
         state: data.uf || currentForm.state,
       }));
-      setCepFeedback("Endereço preenchido automaticamente.");
     } catch {
       setErrors((currentErrors) => ({
         ...currentErrors,
         cep: "Não foi possível consultar o CEP agora.",
       }));
-    } finally {
-      setCepLoading(false);
     }
   }
 
@@ -408,7 +388,8 @@ export default function Register() {
   }
 
   return (
-    <View className="flex-1 bg-azul-primario">
+    <View className="flex-1 bg-white">
+      <View className="absolute top-0 left-0 right-0 h-[35%] bg-azul-primario" />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -420,14 +401,14 @@ export default function Register() {
             resizeMode="contain"
           />
 
-          <View className="bg-white rounded-t-[50px] absolute bottom-0 left-0 right-0 h-[84%]">
+          <View className="bg-white rounded-t-[50px] absolute bottom-0 left-0 right-0 h-[84%] overflow-hidden">
             <ScrollView
               className="flex-1"
-              contentContainerStyle={{ paddingBottom: 96 }}
+              contentContainerStyle={{ paddingBottom: 64 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-            <View className="px-10 pt-10 pb-4 gap-6">
+            <View className="px-10 pt-10 gap-6">
               <View className="gap-3">
                 <Text className="text-2xl font-poppins-semibold text-texto-primario">
                   Crie sua conta
@@ -475,14 +456,6 @@ export default function Register() {
                       keyboardType="email-address"
                       error={errors.email}
                     />
-                    {isCheckingEmail ? (
-                      <View className="min-h-5 flex-row items-center gap-2">
-                        <ActivityIndicator size="small" color="#0063f5" />
-                        <Text className="font-poppins-regular text-xs text-azul-primario">
-                          Verificando e-mail...
-                        </Text>
-                      </View>
-                    ) : null}
                     <InputText
                       label="Telefone"
                       required
@@ -569,14 +542,6 @@ export default function Register() {
                       keyboardType="number-pad"
                       error={errors.cnpj}
                     />
-                    {isCheckingCnpj ? (
-                      <View className="min-h-5 flex-row items-center gap-2">
-                        <ActivityIndicator size="small" color="#0063f5" />
-                        <Text className="font-poppins-regular text-xs text-azul-primario">
-                          Verificando CNPJ...
-                        </Text>
-                      </View>
-                    ) : null}
 
                     <View className="gap-2">
                       <InputText
@@ -592,16 +557,6 @@ export default function Register() {
                         keyboardType="number-pad"
                         error={errors.cep}
                       />
-                      <View className="min-h-5 flex-row items-center gap-2">
-                        {cepLoading ? (
-                          <ActivityIndicator size="small" color="#0063f5" />
-                        ) : null}
-                        {cepFeedback ? (
-                          <Text className="font-poppins-regular text-xs text-azul-primario">
-                            {cepFeedback}
-                          </Text>
-                        ) : null}
-                      </View>
                     </View>
 
                     <InputText

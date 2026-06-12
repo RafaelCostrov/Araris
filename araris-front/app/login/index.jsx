@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   View,
 } from "react-native";
@@ -60,7 +61,8 @@ export default function AcessarConta() {
   }
 
   return (
-    <View className="flex-1 bg-azul-primario">
+    <View className="flex-1 bg-white">
+      <View className="absolute top-0 left-0 right-0 h-[35%] bg-azul-primario" />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -71,69 +73,80 @@ export default function AcessarConta() {
             className="self-center w-[60%] mt-[5%] h-[15%]"
             resizeMode="contain"
           />
-          <View className="bg-white rounded-t-[50px] absolute bottom-0 left-0 right-0  h-[80%] justify-around pb-4">
-            <Text className="text-2xl pl-12 pt-10 font-poppins-semibold text-texto-primario">
-              Acesse sua conta
-            </Text>
-            <View className="gap-6">
-              <View className="w-[85%] self-center gap-6">
-                <InputText
-                  label="E-mail"
-                  required
-                  placeholder="usuario@email.com"
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-                    setEmailError("");
-                  }}
-                  secureTextEntry={false}
-                  onBlur={handleEmailBlur}
-                  error={emailError}
-                />
-                <InputText
-                  label="Senha"
-                  required
-                  placeholder="•••••••••••••"
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    setPasswordError("");
-                    setFormError("");
-                  }}
-                  secureTextEntry={true}
-                  error={passwordError}
-                />
-              </View>
+          <View className="bg-white rounded-t-[50px] absolute bottom-0 left-0 right-0 h-[80%] overflow-hidden">
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{
+                paddingTop: 40,
+                paddingBottom: 64,
+                gap: 32,
+              }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text className="text-2xl pl-12 font-poppins-semibold text-texto-primario">
+                Acesse sua conta
+              </Text>
+              <View className="gap-6">
+                <View className="w-[85%] self-center gap-6">
+                  <InputText
+                    label="E-mail"
+                    required
+                    placeholder="usuario@email.com"
+                    value={email}
+                    onChangeText={(text) => {
+                      setEmail(text);
+                      setEmailError("");
+                    }}
+                    secureTextEntry={false}
+                    onBlur={handleEmailBlur}
+                    error={emailError}
+                  />
+                  <InputText
+                    label="Senha"
+                    required
+                    placeholder="•••••••••••••"
+                    value={password}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      setPasswordError("");
+                      setFormError("");
+                    }}
+                    secureTextEntry={true}
+                    error={passwordError}
+                  />
+                </View>
 
-              {formError ? (
-                <Text className="px-12 text-sm font-poppins-medium text-red-500">
-                  {formError}
+                {formError ? (
+                  <Text className="px-12 text-sm font-poppins-medium text-red-500">
+                    {formError}
+                  </Text>
+                ) : null}
+
+                <Text className="text-left pl-12 text-sm font-poppins-medium text-azul-primario">
+                  Esqueceu sua senha?
                 </Text>
-              ) : null}
-
-              <Text className="text-left pl-12 text-sm font-poppins-medium text-azul-primario">
-                Esqueceu sua senha?
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#0063f5" />
+                ) : (
+                  <Button title="Entrar" onPress={handleLogin} isPrimary={true} />
+                )}
+              </View>
+              <Text className="text-center font-poppins-medium text-texto-secundario">
+                Não possui conta?{" "}
+                <Text onPress={() => router.replace("/register")} className="text-azul-primario">
+                  Se Cadastre
+                </Text>
               </Text>
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#0063f5" />
-              ) : (
-                <Button title="Entrar" onPress={handleLogin} isPrimary={true} />
-              )}
-            </View>
-            <Text className="text-center font-poppins-medium text-texto-secundario">
-              Não possui conta?{" "}
-              <Text onPress={() => router.replace("/register")} className="text-azul-primario">
-                Se Cadastre
-              </Text>
-            </Text>
-            <View className="h-[1px] w-[90%] self-center bg-gray-300" />
-            <Pressable className="p-4 w-[20%] self-center items-center justify-center rounded-xl active:bg-gray-200/50 border border-gray-200">
-              <Image
-                source={require("../../assets/images/google.png")}
-                className="w-10 h-10 self-center"
-                resizeMode="contain"
-              />
-            </Pressable>
+              <View className="h-[1px] w-[90%] self-center bg-gray-300" />
+              <Pressable className="p-4 w-[20%] self-center items-center justify-center rounded-xl active:bg-gray-200/50 border border-gray-200">
+                <Image
+                  source={require("../../assets/images/google.png")}
+                  className="w-10 h-10 self-center"
+                  resizeMode="contain"
+                />
+              </Pressable>
+            </ScrollView>
           </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
