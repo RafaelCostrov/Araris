@@ -11,6 +11,7 @@ class ExternalServiceLog(TimestampedUUIDModel):
         AWESOME_API_EXCHANGE = "awesome_api_exchange", "AwesomeAPI Câmbio"
         DAS_MEI_SIMULATED = "das_mei_simulated", "DAS MEI Simulado"
         FIREBASE_CLOUD_MESSAGING = "firebase_cloud_messaging", "Firebase Cloud Messaging"
+        GOOGLE_OAUTH = "google_oauth", "Google OAuth"
 
     class Status(models.TextChoices):
         SUCCESS = "success", "Sucesso"

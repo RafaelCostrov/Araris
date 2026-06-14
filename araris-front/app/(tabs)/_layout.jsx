@@ -1,9 +1,11 @@
-import { Tabs } from "expo-router";
+import { useEffect, useState } from "react";
+import { Tabs, useRouter } from "expo-router";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { House, ChartColumnIncreasing, Landmark, BotMessageSquare } from "lucide-react-native";
 import CustomHeader from "../../components/Header";
 import AddButton from "../../components/AddButton";
+import { useAuth } from "../../contexts/AuthContext";
 
 function TabBackground() {
   if (Platform.OS === "android") return null;
@@ -11,6 +13,41 @@ function TabBackground() {
 }
 
 export default function TabsLayout() {
+  const router = useRouter();
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const { isAuthenticated, loadSession } = useAuth();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function verifySession() {
+      try {
+        const session = isAuthenticated ? { user: true } : await loadSession();
+        if (!session?.user && isMounted) {
+          router.replace("/login");
+        }
+      } catch {
+        if (isMounted) {
+          router.replace("/login");
+        }
+      } finally {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      }
+    }
+
+    verifySession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, loadSession, router]);
+
+  if (isCheckingSession) {
+    return <View className="flex-1 bg-azul-primario" />;
+  }
+
   return (
     <Tabs
       screenOptions={{

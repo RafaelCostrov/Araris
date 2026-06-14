@@ -14,17 +14,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import "../../global.css";
 import Button from "../../components/Button";
 import InputText from "../../components/InputText";
-import { login } from "../../services/authService";
+import { useAuth } from "../../contexts/AuthContext";
+import { googleLogin, login } from "../../services/authService";
+import { getGoogleIdentity } from "../../services/googleAuthService";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AcessarConta() {
+  const { loadSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [formError, setFormError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   function handleEmailBlur() {
     if (email && !EMAIL_REGEX.test(email)) {
@@ -52,11 +56,42 @@ export default function AcessarConta() {
     try {
       setIsLoading(true);
       await login({ email, password });
+      const session = await loadSession();
+
+      if (!session?.user) {
+        throw new Error("Não foi possível carregar os dados da sessão.");
+      }
+
       router.replace("/(tabs)/home");
     } catch (error) {
       setFormError(error.message || "Não foi possível acessar sua conta.");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleGoogleLogin() {
+    try {
+      setIsGoogleLoading(true);
+      setFormError("");
+      const googleIdentity = await getGoogleIdentity();
+
+      if (!googleIdentity) {
+        return;
+      }
+
+      await googleLogin(googleIdentity.idToken);
+      const session = await loadSession();
+
+      if (!session?.user) {
+        throw new Error("Não foi possível carregar os dados da sessão.");
+      }
+
+      router.replace("/(tabs)/home");
+    } catch (error) {
+      setFormError(error.message || "Não foi possível acessar com Google.");
+    } finally {
+      setIsGoogleLoading(false);
     }
   }
 
@@ -139,12 +174,20 @@ export default function AcessarConta() {
                 </Text>
               </Text>
               <View className="h-[1px] w-[90%] self-center bg-gray-300" />
-              <Pressable className="p-4 w-[20%] self-center items-center justify-center rounded-xl active:bg-gray-200/50 border border-gray-200">
-                <Image
-                  source={require("../../assets/images/google.png")}
-                  className="w-10 h-10 self-center"
-                  resizeMode="contain"
-                />
+              <Pressable
+                className="p-4 w-[20%] self-center items-center justify-center rounded-xl active:bg-gray-200/50 border border-gray-200"
+                onPress={handleGoogleLogin}
+                disabled={isGoogleLoading}
+              >
+                {isGoogleLoading ? (
+                  <ActivityIndicator size="small" color="#0063f5" />
+                ) : (
+                  <Image
+                    source={require("../../assets/images/google.png")}
+                    className="w-10 h-10 self-center"
+                    resizeMode="contain"
+                  />
+                )}
               </Pressable>
             </ScrollView>
           </View>

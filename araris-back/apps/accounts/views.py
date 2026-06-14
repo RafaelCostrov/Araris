@@ -8,6 +8,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from apps.accounts.serializers import (
     EmailTokenObtainPairSerializer,
     EmailAvailabilitySerializer,
+    GoogleLoginResponseSerializer,
+    GoogleLoginSerializer,
+    GoogleRegisterSerializer,
     MeSerializer,
     RegisterResponseSerializer,
     RegisterSerializer,
@@ -31,6 +34,28 @@ class RegisterView(APIView):
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = EmailTokenObtainPairSerializer
+
+
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = GoogleLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        response_serializer = GoogleLoginResponseSerializer(result)
+        return Response(response_serializer.data)
+
+
+class GoogleRegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = GoogleRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        response_serializer = RegisterResponseSerializer(result)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
 class EmailAvailabilityView(APIView):

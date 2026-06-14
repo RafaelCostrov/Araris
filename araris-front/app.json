@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "front",
-    "slug": "front",
+    "name": "Araris",
+    "slug": "Araris",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "front",
+    "scheme": "Araris",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -39,11 +39,19 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "55204642-6105-4f01-8b5d-138fd729674a"
+      }
     }
   }
 }

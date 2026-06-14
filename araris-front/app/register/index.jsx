@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -16,14 +17,18 @@ import Button from "../../components/Button";
 import InputText from "../../components/InputText";
 import SelectField from "../../components/SelectField";
 import { BUSINESS_CATEGORIES } from "../../constants/businessCategories";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   checkCnpjAvailability,
   checkEmailAvailability,
+  googleRegister,
   register,
 } from "../../services/authService";
+import { getGoogleIdentity } from "../../services/googleAuthService";
+import { lookupCep, lookupCnpj } from "../../services/integrationService";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 function onlyDigits(value) {
   return value.replace(/\D/g, "");
@@ -114,36 +119,93 @@ const initialForm = {
   phone: "",
   password: "",
   passwordConfirm: "",
+  authMethod: "email",
+  googleIdToken: "",
   acceptedLgpd: false,
   businessName: "",
+  tradeName: "",
   cnpj: "",
   cep: "",
   street: "",
   number: "",
+  addressComplement: "",
   neighborhood: "",
   city: "",
   state: "",
+  cnaeCode: "",
+  cnaeDescription: "",
+  meiOptIn: null,
+  registrationStatus: "",
   initialBalance: "",
   companyCategory: "",
 };
 
 const stepLabels = [
+  "Forma de cadastro",
   "Informações básicas",
   "CNPJ e localização",
   "Informações da empresa",
 ];
 
 export default function Register() {
+  const { loadSession } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function updateField(field, value) {
     setForm((currentForm) => ({ ...currentForm, [field]: value }));
     setErrors((currentErrors) => ({ ...currentErrors, [field]: "" }));
     setSubmitError("");
+  }
+
+  function handleEmailRegisterChoice() {
+    setForm((currentForm) => ({
+      ...currentForm,
+      authMethod: "email",
+      googleIdToken: "",
+    }));
+    setCurrentStep(1);
+  }
+
+  async function handleGoogleRegisterChoice() {
+    try {
+      setIsGoogleLoading(true);
+      setSubmitError("");
+      const googleIdentity = await getGoogleIdentity();
+
+      if (!googleIdentity) {
+        return;
+      }
+
+      setForm((currentForm) => ({
+        ...currentForm,
+        authMethod: "google",
+        googleIdToken: googleIdentity.idToken,
+        name: googleIdentity.user?.name || currentForm.name,
+        email: googleIdentity.user?.email || currentForm.email,
+      }));
+      setCurrentStep(2);
+    } catch (error) {
+      Alert.alert(
+        "Cadastro com Google",
+        error.message || "Não foi possível iniciar o cadastro com Google.",
+      );
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }
+
+  function handlePreviousStep() {
+    if (form.authMethod === "google" && currentStep === 2) {
+      setCurrentStep(0);
+      return;
+    }
+
+    setCurrentStep((step) => Math.max(step - 1, 0));
   }
 
   async function checkEmail() {
@@ -183,6 +245,39 @@ export default function Register() {
     await checkEmail();
   }
 
+  async function fillCompanyFromCnpj() {
+    try {
+      const company = await lookupCnpj(form.cnpj);
+      const companyNumber = onlyDigits(company.number);
+
+      setForm((currentForm) => ({
+        ...currentForm,
+        businessName: company.business_name || currentForm.businessName,
+        tradeName: company.trade_name || currentForm.tradeName,
+        cep: company.postal_code
+          ? formatCep(company.postal_code)
+          : currentForm.cep,
+        street: company.street || currentForm.street,
+        number: companyNumber || currentForm.number,
+        addressComplement:
+          company.address_complement || currentForm.addressComplement,
+        neighborhood: company.neighborhood || currentForm.neighborhood,
+        city: company.city || currentForm.city,
+        state: company.state || currentForm.state,
+        cnaeCode: company.cnae_code || currentForm.cnaeCode,
+        cnaeDescription: company.cnae_description || currentForm.cnaeDescription,
+        meiOptIn:
+          typeof company.mei_opt_in === "boolean"
+            ? company.mei_opt_in
+            : currentForm.meiOptIn,
+        registrationStatus:
+          company.registration_status || currentForm.registrationStatus,
+      }));
+    } catch {
+      return;
+    }
+  }
+
   async function checkCnpj() {
     if (!form.cnpj.trim()) {
       return false;
@@ -208,6 +303,7 @@ export default function Register() {
       }
 
       setErrors((currentErrors) => ({ ...currentErrors, cnpj: "" }));
+      await fillCompanyFromCnpj();
       return true;
     } catch {
       return true;
@@ -236,31 +332,22 @@ export default function Register() {
     setErrors((currentErrors) => ({ ...currentErrors, cep: "" }));
 
     try {
-      const response = await fetch(
-        `https://viacep.com.br/ws/${cepDigits}/json/`,
-      );
-      const data = await response.json();
-
-      if (data.erro) {
-        setErrors((currentErrors) => ({
-          ...currentErrors,
-          cep: "CEP não encontrado.",
-        }));
-        return;
-      }
+      const data = await lookupCep(cepDigits);
 
       setForm((currentForm) => ({
         ...currentForm,
         cep: formatCep(cepDigits),
-        street: data.logradouro || currentForm.street,
-        neighborhood: data.bairro || currentForm.neighborhood,
-        city: data.localidade || currentForm.city,
-        state: data.uf || currentForm.state,
+        addressComplement:
+          data.address_complement || currentForm.addressComplement,
+        street: data.street || currentForm.street,
+        neighborhood: data.neighborhood || currentForm.neighborhood,
+        city: data.city || currentForm.city,
+        state: data.state || currentForm.state,
       }));
-    } catch {
+    } catch (error) {
       setErrors((currentErrors) => ({
         ...currentErrors,
-        cep: "Não foi possível consultar o CEP agora.",
+        cep: error.message || "Não foi possível consultar o CEP agora.",
       }));
     }
   }
@@ -268,7 +355,7 @@ export default function Register() {
   async function validateCurrentStep() {
     const nextErrors = {};
 
-    if (currentStep === 0) {
+    if (currentStep === 1) {
       if (!form.name.trim()) {
         nextErrors.name = "Informe seu nome.";
       }
@@ -295,12 +382,9 @@ export default function Register() {
         nextErrors.passwordConfirm = "As senhas não conferem.";
       }
 
-      if (!form.acceptedLgpd) {
-        nextErrors.acceptedLgpd = "Você precisa aceitar os termos de privacidade.";
-      }
     }
 
-    if (currentStep === 1) {
+    if (currentStep === 2) {
       if (!form.cnpj.trim()) {
         nextErrors.cnpj = "Informe o CNPJ.";
       } else if (!isValidCnpj(form.cnpj)) {
@@ -332,7 +416,7 @@ export default function Register() {
       }
     }
 
-    if (currentStep === 2) {
+    if (currentStep === 3) {
       if (!form.businessName.trim()) {
         nextErrors.businessName = "Informe o nome da empresa.";
       }
@@ -344,6 +428,10 @@ export default function Register() {
       if (!form.companyCategory.trim()) {
         nextErrors.companyCategory = "Informe a categoria da empresa.";
       }
+
+      if (!form.acceptedLgpd) {
+        nextErrors.acceptedLgpd = "Você precisa aceitar os termos de privacidade.";
+      }
     }
 
     setErrors((currentErrors) => ({ ...currentErrors, ...nextErrors }));
@@ -351,11 +439,11 @@ export default function Register() {
       return false;
     }
 
-    if (currentStep === 0) {
+    if (currentStep === 1) {
       return checkEmail();
     }
 
-    if (currentStep === 1) {
+    if (currentStep === 2) {
       return checkCnpj();
     }
 
@@ -378,7 +466,17 @@ export default function Register() {
     try {
       setIsSubmitting(true);
       setSubmitError("");
-      await register(form);
+      if (form.authMethod === "google") {
+        await googleRegister(form);
+      } else {
+        await register(form);
+      }
+      const session = await loadSession();
+
+      if (!session?.user) {
+        throw new Error("Não foi possível carregar os dados da sessão.");
+      }
+
       router.replace("/(tabs)/home");
     } catch (error) {
       setSubmitError(error.message || "Não foi possível criar sua conta.");
@@ -433,6 +531,45 @@ export default function Register() {
 
               <View className="gap-6">
                 {currentStep === 0 ? (
+                  <View className="gap-4">
+                    <Pressable
+                      className="flex-row items-center gap-4 rounded-2xl border border-gray-200 px-4 py-4 active:bg-gray-100"
+                      onPress={handleGoogleRegisterChoice}
+                      disabled={isGoogleLoading}
+                    >
+                      <Image
+                        source={require("../../assets/images/google.png")}
+                        className="w-9 h-9"
+                        resizeMode="contain"
+                      />
+                      <View className="flex-1">
+                        <Text className="font-poppins-semibold text-texto-primario">
+                          Continuar com Google
+                        </Text>
+                        <Text className="font-poppins-regular text-sm text-texto-terciario">
+                          Use sua conta Google para entrar no Araris.
+                        </Text>
+                      </View>
+                      {isGoogleLoading ? (
+                        <ActivityIndicator size="small" color="#0063f5" />
+                      ) : null}
+                    </Pressable>
+
+                    <Pressable
+                      className="rounded-2xl border border-gray-200 px-4 py-4 active:bg-gray-100"
+                      onPress={handleEmailRegisterChoice}
+                    >
+                      <Text className="font-poppins-semibold text-texto-primario">
+                        Continuar com e-mail
+                      </Text>
+                      <Text className="font-poppins-regular text-sm text-texto-terciario">
+                        Crie sua conta preenchendo os dados do formulário.
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {currentStep === 1 ? (
                   <>
                     <InputText
                       label="Nome completo"
@@ -488,46 +625,11 @@ export default function Register() {
                       secureTextEntry={true}
                       error={errors.passwordConfirm}
                     />
-                    <Pressable
-                      className="flex-row items-start gap-3"
-                      onPress={() =>
-                        updateField("acceptedLgpd", !form.acceptedLgpd)
-                      }
-                    >
-                      <View
-                        className={`h-5 w-5 rounded border items-center justify-center mt-1 ${
-                          form.acceptedLgpd
-                            ? "bg-azul-primario border-azul-primario"
-                            : "bg-white border-gray-400"
-                        }`}
-                      >
-                        {form.acceptedLgpd ? (
-                          <Text className="text-white text-xs font-poppins-semibold">
-                            ✓
-                          </Text>
-                        ) : null}
-                      </View>
-                      <Text className="flex-1 font-poppins-regular text-texto-secundario">
-                        Li e aceito os{" "}
-                        <Text
-                          className="text-azul-primario font-poppins-medium"
-                          onPress={() => router.push("/privacy")}
-                        >
-                          termos de privacidade
-                        </Text>{" "}
-                        e tratamento de dados.
-                      </Text>
-                    </Pressable>
-                    {errors.acceptedLgpd ? (
-                      <Text className="text-red-500 text-xs font-poppins-regular">
-                        {errors.acceptedLgpd}
-                      </Text>
-                    ) : null}
                   </>
                   
                 ) : null}
 
-                {currentStep === 1 ? (
+                {currentStep === 2 ? (
                   <>
                     <InputText
                       label="CNPJ"
@@ -612,7 +714,7 @@ export default function Register() {
                   </>
                 ) : null}
 
-                {currentStep === 2 ? (
+                {currentStep === 3 ? (
                   <>
                     <InputText
                       label="Nome da empresa"
@@ -646,6 +748,41 @@ export default function Register() {
                       }
                       error={errors.companyCategory}
                     />
+                    <Pressable
+                      className="flex-row items-start gap-3"
+                      onPress={() =>
+                        updateField("acceptedLgpd", !form.acceptedLgpd)
+                      }
+                    >
+                      <View
+                        className={`h-5 w-5 rounded border items-center justify-center mt-1 ${
+                          form.acceptedLgpd
+                            ? "bg-azul-primario border-azul-primario"
+                            : "bg-white border-gray-400"
+                        }`}
+                      >
+                        {form.acceptedLgpd ? (
+                          <Text className="text-white text-xs font-poppins-semibold">
+                            ✓
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Text className="flex-1 font-poppins-regular text-texto-secundario">
+                        Li e aceito os{" "}
+                        <Text
+                          className="text-azul-primario font-poppins-medium"
+                          onPress={() => router.push("/privacy")}
+                        >
+                          termos de privacidade
+                        </Text>{" "}
+                        e tratamento de dados.
+                      </Text>
+                    </Pressable>
+                    {errors.acceptedLgpd ? (
+                      <Text className="text-red-500 text-xs font-poppins-regular">
+                        {errors.acceptedLgpd}
+                      </Text>
+                    ) : null}
                   </>
                 ) : null}
               </View>
@@ -657,7 +794,7 @@ export default function Register() {
                   </Text>
                 ) : null}
 
-                {currentStep < TOTAL_STEPS - 1 ? (
+                {currentStep === 0 ? null : currentStep < TOTAL_STEPS - 1 ? (
                   <Button
                     title="Continuar"
                     onPress={handleNextStep}
@@ -675,9 +812,7 @@ export default function Register() {
 
                 {currentStep > 0 ? (
                   <Pressable
-                    onPress={() =>
-                      setCurrentStep((step) => Math.max(step - 1, 0))
-                    }
+                    onPress={handlePreviousStep}
                   >
                     <Text className="text-center font-poppins-medium text-azul-primario">
                       Voltar para a etapa anterior

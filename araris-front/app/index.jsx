@@ -4,19 +4,20 @@ import { Image, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import "../global.css";
 import Button from "../components/Button";
-import { refreshSession } from "../services/authService";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Index() {
   const router = useRouter();
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const { isAuthenticated, loadSession } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
 
     async function restoreSession() {
       try {
-        const tokens = await refreshSession();
-        if (tokens && isMounted) {
+        const session = isAuthenticated ? { user: true } : await loadSession();
+        if (session?.user && isMounted) {
           router.replace("/(tabs)/home");
         }
       } catch (error) {
@@ -33,7 +34,7 @@ export default function Index() {
     return () => {
       isMounted = false;
     };
-  }, [router]);
+  }, [isAuthenticated, loadSession, router]);
 
   if (isCheckingSession) {
     return <View className="flex-1 bg-azul-primario" />;

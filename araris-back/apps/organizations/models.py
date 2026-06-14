@@ -22,6 +22,7 @@ class Organization(TimestampedUUIDModel):
         CANCELED = "canceled", "Cancelada"
 
     business_name = models.CharField(max_length=255)
+    trade_name = models.CharField(max_length=255, blank=True)
     cnpj = models.CharField(max_length=14, unique=True)
     business_category = models.CharField(
         max_length=30,
@@ -36,6 +37,10 @@ class Organization(TimestampedUUIDModel):
     city = models.CharField(max_length=120, blank=True)
     state = models.CharField(max_length=2, blank=True)
     ibge_code = models.CharField(max_length=20, blank=True)
+    cnae_code = models.CharField(max_length=20, blank=True)
+    cnae_description = models.CharField(max_length=255, blank=True)
+    mei_opt_in = models.BooleanField(null=True, blank=True)
+    registration_status = models.CharField(max_length=40, blank=True)
     initial_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status = models.CharField(
         max_length=20,

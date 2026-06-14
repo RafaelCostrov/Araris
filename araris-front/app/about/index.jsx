@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Image, ScrollView, Text, View } from "react-native";
+import { Image, Platform, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import "../../global.css";
 
@@ -15,7 +15,10 @@ export default function About() {
 
         <View className="bg-white rounded-t-[50px] absolute bottom-0 left-0 right-0 h-[82%]">
           <ScrollView
-            className="flex-1 px-10 pt-12 pb-8"
+            className="flex-1 px-10 pt-12"
+            contentContainerStyle={{
+              paddingBottom: Platform.OS === "android" ? 48 : 24,
+            }}
             showsVerticalScrollIndicator={false}
           >
             <View className="gap-6 mb-4">

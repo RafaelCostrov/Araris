@@ -17,6 +17,13 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+firebase-service-account*.json
+service-account*.json
+
+*/google-services.json
+*/GoogleService-Info.plist
+
+.idea/
 
 # Metro
 .metro-health-check*
@@ -56,8 +63,9 @@ media/
 staticfiles/
 
 # Env files
-
 .env
 .env.*
 **/.env
 **/.env.*
+
+**/araris-*.json

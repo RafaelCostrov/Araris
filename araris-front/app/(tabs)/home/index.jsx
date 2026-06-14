@@ -22,6 +22,7 @@ import {
 import LineItem from "../../../components/LineItem";
 import SummaryCardShort from "../../../components/SummaryCardShort";
 import SummaryCardLong from "../../../components/SummaryCardLong";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const items = [
   {
@@ -96,8 +97,10 @@ const items = [
 
 export default function Home() {
   const tabBarHeight = useBottomTabBarHeight();
+  const { currentOrganization, user } = useAuth();
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const firstName = user?.name?.split(" ")[0] ?? "bem-vindo";
 
   function openItemModal(item) {
     setSelectedItem(item);
@@ -123,14 +126,24 @@ export default function Home() {
 
   return (
     <View className="flex-1 bg-gray-50 pt-4">
-      <Text className="text-3xl font-poppins-semibold px-8 mb-4">Homepage</Text>
-
       <ScrollView
         className="w-full"
-        contentContainerStyle={{ paddingBottom: tabBarHeight + 16 }}
+        contentContainerStyle={{ paddingTop: 4, paddingBottom: tabBarHeight + 16 }}
         showsVerticalScrollIndicator={false}
       >
         <View className="w-[90%] self-center gap-4">
+          <View>
+            <Text className="text-base font-poppins-medium text-texto-terciario">
+              Olá, {firstName}
+            </Text>
+            <Text
+              className="text-xl font-poppins-semibold text-texto-primario"
+              numberOfLines={2}
+            >
+              {currentOrganization?.business_name ?? "Homepage"}
+            </Text>
+          </View>
+
           <View className="flex-row gap-4">
             <SummaryCardShort
               icon={<BanknoteArrowUp size={22} />}

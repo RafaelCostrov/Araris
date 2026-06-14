@@ -28,6 +28,20 @@ def env_list(name, default=""):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def unique_env_items(*items):
+    seen = set()
+    result = []
+    ignored_values = {"web-client-id", "android-client-id", "ios-client-id"}
+
+    for item in items:
+        if not item or item in ignored_values or item in seen:
+            continue
+        seen.add(item)
+        result.append(item)
+
+    return result
+
+
 load_env_file(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "development-secret-key")
@@ -87,11 +101,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "araris"),
-        "USER": os.getenv("POSTGRES_USER", "postgres"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "NAME": os.getenv("POSTGRES_DB"),
+        "USER": os.getenv("POSTGRES_USER"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "HOST": os.getenv("POSTGRES_HOST"),
+        "PORT": os.getenv("POSTGRES_PORT"),
     }
 }
 
@@ -116,6 +130,32 @@ CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:8081,http://127.0.0.1:8081",
 )
+
+EXTERNAL_SERVICES_VERIFY_SSL = env_bool("EXTERNAL_SERVICES_VERIFY_SSL", not DEBUG)
+
+GOOGLE_CLIENT_ID_WEB = os.getenv("GOOGLE_CLIENT_ID_WEB", "")
+GOOGLE_CLIENT_ID_ANDROID = os.getenv("GOOGLE_CLIENT_ID_ANDROID", "")
+GOOGLE_CLIENT_ID_IOS = os.getenv("GOOGLE_CLIENT_ID_IOS", "")
+GOOGLE_OAUTH_CLIENT_IDS = unique_env_items(
+    *env_list("GOOGLE_OAUTH_CLIENT_IDS"),
+    GOOGLE_CLIENT_ID_WEB,
+    GOOGLE_CLIENT_ID_ANDROID,
+    GOOGLE_CLIENT_ID_IOS,
+)
+GOOGLE_OAUTH_REQUIRE_VERIFIED_EMAIL = env_bool(
+    "GOOGLE_OAUTH_REQUIRE_VERIFIED_EMAIL",
+    True,
+)
+GOOGLE_OAUTH_HD_DOMAIN = os.getenv("GOOGLE_OAUTH_HD_DOMAIN", "").strip()
+GOOGLE_TOKENINFO_ENDPOINT = "https://oauth2.googleapis.com/tokeninfo"
+
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "").strip()
+FIREBASE_SERVICE_ACCOUNT_FILE = os.getenv("FIREBASE_SERVICE_ACCOUNT_FILE", "").strip()
+FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 = os.getenv(
+    "FIREBASE_SERVICE_ACCOUNT_JSON_BASE64",
+    "",
+).strip()
+FCM_DRY_RUN = env_bool("FCM_DRY_RUN", True)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (

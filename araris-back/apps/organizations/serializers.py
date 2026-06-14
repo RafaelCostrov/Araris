@@ -18,6 +18,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "business_name",
+            "trade_name",
             "cnpj",
             "business_category",
             "postal_code",
@@ -28,6 +29,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "city",
             "state",
             "ibge_code",
+            "cnae_code",
+            "cnae_description",
+            "mei_opt_in",
+            "registration_status",
             "initial_balance",
             "status",
             "timezone",
