@@ -20,8 +20,11 @@ expo-env.d.ts
 firebase-service-account*.json
 service-account*.json
 
-*/google-services.json
-*/GoogleService-Info.plist
+
+araris-front/google-services.json
+araris-front/GoogleService-Info.plist
+araris-front/android/app/google-services.json
+araris-front/ios/Araris/GoogleService-Info.plist
 
 .idea/
 
