@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, LogOut, Settings, User } from "lucide-react-native";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Image,
   Modal,
   Pressable,
@@ -15,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import {
+  addNotificationReceivedListener,
   listNotifications,
   markNotificationAsRead,
 } from "../../services/notificationService";
@@ -26,6 +28,41 @@ export default function CustomHeader() {
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const { signOut, user } = useAuth();
+  const hasUnreadNotifications = notifications.some(
+    (notification) => !notification.read_at,
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function refreshNotifications() {
+      try {
+        const data = await listNotifications();
+        if (isMounted) {
+          setNotifications(data);
+        }
+      } catch {}
+    }
+
+    refreshNotifications();
+    const notificationSubscription = addNotificationReceivedListener(
+      refreshNotifications,
+    );
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (nextState) => {
+        if (nextState === "active") {
+          refreshNotifications();
+        }
+      },
+    );
+
+    return () => {
+      isMounted = false;
+      notificationSubscription.remove();
+      appStateSubscription.remove();
+    };
+  }, []);
 
   function closeProfileMenu() {
     setIsProfileMenuVisible(false);
@@ -112,8 +149,15 @@ export default function CustomHeader() {
           resizeMode="contain"
         />
         <View className="flex-row items-center gap-4">
-          <TouchableOpacity activeOpacity={0.7} onPress={openNotificationMenu}>
+          <TouchableOpacity
+            className="relative p-1"
+            activeOpacity={0.7}
+            onPress={openNotificationMenu}
+          >
             <Bell color="#fff" size={25} />
+            {hasUnreadNotifications ? (
+              <View className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-azul-primario bg-red-500" />
+            ) : null}
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -229,7 +273,7 @@ export default function CustomHeader() {
                             {notification.message}
                           </Text>
                           <Text className="mt-1 font-poppins-regular text-xs text-texto-terciario">
-                            {notification.delivery_status}
+                            {notification.delivery_status_label}
                           </Text>
                         </View>
                       </View>

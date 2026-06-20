@@ -5,6 +5,7 @@ from pathlib import Path
 from time import perf_counter
 
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
 from apps.integrations.models import ExternalServiceLog
@@ -22,19 +23,11 @@ class FirebaseMessagingError(Exception):
 
 
 _firebase_app = None
+FCM_MULTICAST_LIMIT = 500
 
 
 def _duration_ms(start):
     return max(1, round((perf_counter() - start) * 1000))
-
-
-def get_active_membership(user):
-    return (
-        user.memberships.select_related("organization")
-        .filter(status=Membership.Status.ACTIVE)
-        .order_by("created_at")
-        .first()
-    )
 
 
 def _mask_token(token):
@@ -139,44 +132,124 @@ def _get_firebase_app():
     return _firebase_app
 
 
-def create_test_notification(user):
-    membership = get_active_membership(user)
-    if not membership:
-        raise ValueError("Usuário não possui empresa ativa.")
+def create_and_send_notification(
+    *,
+    organization,
+    notification_type,
+    title,
+    message,
+    priority=Alert.Priority.MEDIUM,
+    data=None,
+    requested_by=None,
+    alert_type=Alert.Type.GENERAL,
+    source_entity="",
+    source_entity_id=None,
+    idempotency_key=None,
+):
+    memberships = list(
+        Membership.objects.select_related("user")
+        .filter(
+            organization=organization,
+            status=Membership.Status.ACTIVE,
+            user__isnull=False,
+        )
+        .order_by("created_at")
+    )
+    if not memberships:
+        raise ValueError("A empresa não possui membros ativos.")
 
-    organization = membership.organization
-    alert = Alert.objects.create(
-        organization=organization,
-        type=Alert.Type.GENERAL,
-        title="Alerta de teste",
-        message="Este é um aviso de teste do Araris.",
-        priority=Alert.Priority.MEDIUM,
-        payload={"source": "manual_test"},
-    )
-    notification = Notification.objects.create(
-        organization=organization,
-        alert=alert,
-        channel=Notification.Channel.PUSH,
-        type=Notification.Type.ALERT,
-        title=alert.title,
-        message=alert.message,
-        status=Notification.Status.PENDING,
-        payload={"alert_id": str(alert.id), "source": "manual_test"},
-    )
-
-    active_memberships = organization.memberships.select_related("user").filter(
-        status=Membership.Status.ACTIVE,
-        user__isnull=False,
-    )
-    for active_membership in active_memberships:
-        NotificationRecipient.objects.get_or_create(
-            notification=notification,
-            user=active_membership.user,
-            defaults={"membership": active_membership},
+    payload = dict(data or {})
+    with transaction.atomic():
+        alert = Alert.objects.create(
+            organization=organization,
+            type=alert_type,
+            title=title,
+            message=message,
+            priority=priority,
+            source_entity=source_entity,
+            source_entity_id=source_entity_id,
+            payload=payload,
+        )
+        notification = Notification.objects.create(
+            organization=organization,
+            alert=alert,
+            channel=Notification.Channel.PUSH,
+            type=notification_type,
+            title=title,
+            message=message,
+            status=Notification.Status.PENDING,
+            payload={**payload, "alert_id": str(alert.id)},
+            idempotency_key=idempotency_key,
+        )
+        NotificationRecipient.objects.bulk_create(
+            [
+                NotificationRecipient(
+                    notification=notification,
+                    user=membership.user,
+                    membership=membership,
+                )
+                for membership in memberships
+            ]
         )
 
-    send_push_notification(notification, requested_by=user)
-    return notification
+    delivery_result = send_push_notification(
+        notification,
+        requested_by=requested_by,
+    )
+    return {
+        "alert": alert,
+        "notification": notification,
+        "delivery": delivery_result,
+    }
+
+
+def create_and_send_notifications(
+    *,
+    organizations,
+    notification_type,
+    title,
+    message,
+    priority=Alert.Priority.MEDIUM,
+    data=None,
+    requested_by=None,
+    alert_type=Alert.Type.GENERAL,
+    source_entity="",
+    source_entity_id=None,
+):
+    organizations = list(organizations)
+    active_organization_ids = set(
+        Membership.objects.filter(
+            organization__in=organizations,
+            status=Membership.Status.ACTIVE,
+            user__isnull=False,
+        ).values_list("organization_id", flat=True)
+    )
+    organizations_without_members = [
+        str(organization.id)
+        for organization in organizations
+        if organization.id not in active_organization_ids
+    ]
+    if organizations_without_members:
+        raise ValueError(
+            "As seguintes empresas não possuem membros ativos: "
+            + ", ".join(organizations_without_members)
+        )
+
+    return [
+        create_and_send_notification(
+            organization=organization,
+            notification_type=notification_type,
+            title=title,
+            message=message,
+            priority=priority,
+            data=data,
+            requested_by=requested_by,
+            alert_type=alert_type,
+            source_entity=source_entity,
+            source_entity_id=source_entity_id,
+        )
+        for organization in organizations
+    ]
 
 
 def _mark_notification_failed(notification, recipients, detail):
@@ -203,15 +276,18 @@ def _mark_recipient_delivery(recipients, delivered_user_ids, failed_detail=""):
             recipient.delivery_status = NotificationRecipient.DeliveryStatus.FAILED
             recipient.failed_at = now
             recipient.failure_detail = failed_detail
-        recipient.save(
-            update_fields=[
-                "delivery_status",
-                "delivered_at",
-                "failed_at",
-                "failure_detail",
-                "updated_at",
-            ]
-        )
+        recipient.updated_at = now
+    NotificationRecipient.objects.bulk_update(
+        recipients,
+        [
+            "delivery_status",
+            "delivered_at",
+            "failed_at",
+            "failure_detail",
+            "updated_at",
+        ],
+        batch_size=FCM_MULTICAST_LIMIT,
+    )
 
 
 def _send_real_fcm(notification, devices):
@@ -221,8 +297,9 @@ def _send_real_fcm(notification, devices):
     results = []
     delivered_user_ids = set()
 
-    for device in devices:
-        message = messaging.Message(
+    for start in range(0, len(devices), FCM_MULTICAST_LIMIT):
+        device_batch = devices[start : start + FCM_MULTICAST_LIMIT]
+        message = messaging.MulticastMessage(
             notification=messaging.Notification(
                 title=notification.title,
                 body=notification.message,
@@ -232,28 +309,43 @@ def _send_real_fcm(notification, devices):
                 "type": notification.type,
                 "channel": notification.channel,
             },
-            token=device.token,
+            tokens=[device.token for device in device_batch],
         )
         try:
-            response = messaging.send(message, dry_run=settings.FCM_DRY_RUN)
-            delivered_user_ids.add(device.user_id)
-            results.append(
-                {
-                    "token": _mask_token(device.token),
-                    "user_id": str(device.user_id),
-                    "status": "sent",
-                    "response": response,
-                }
+            batch_response = messaging.send_each_for_multicast(
+                message,
+                dry_run=settings.FCM_DRY_RUN,
             )
+            for device, response in zip(device_batch, batch_response.responses):
+                if response.success:
+                    delivered_user_ids.add(device.user_id)
+                    results.append(
+                        {
+                            "token": _mask_token(device.token),
+                            "user_id": str(device.user_id),
+                            "status": "sent",
+                            "response": response.message_id,
+                        }
+                    )
+                else:
+                    results.append(
+                        {
+                            "token": _mask_token(device.token),
+                            "user_id": str(device.user_id),
+                            "status": "failed",
+                            "error": str(response.exception),
+                        }
+                    )
         except Exception as error:
-            results.append(
-                {
-                    "token": _mask_token(device.token),
-                    "user_id": str(device.user_id),
-                    "status": "failed",
-                    "error": str(error),
-                }
-            )
+            for device in device_batch:
+                results.append(
+                    {
+                        "token": _mask_token(device.token),
+                        "user_id": str(device.user_id),
+                        "status": "failed",
+                        "error": str(error),
+                    }
+                )
 
     return delivered_user_ids, results
 

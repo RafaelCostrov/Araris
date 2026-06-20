@@ -52,6 +52,7 @@ app-example
 
 **/Araris.md
 **/Classes.md
+PROJECT_STATUS.md
 
 # Python / Django
 __pycache__/
@@ -64,6 +65,7 @@ htmlcov/
 .coverage
 media/
 staticfiles/
+/araris-back/apps/notifications/tests/
 
 # Env files
 .env

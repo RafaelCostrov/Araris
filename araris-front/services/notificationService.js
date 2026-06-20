@@ -41,10 +41,8 @@ export async function markNotificationAsRead(notificationId) {
   });
 }
 
-export async function createTestNotification() {
-  return authenticatedRequest("/notifications/test/", {
-    method: "POST",
-  });
+export function addNotificationReceivedListener(listener) {
+  return Notifications.addNotificationReceivedListener(listener);
 }
 
 export async function registerPushDevice(payload) {

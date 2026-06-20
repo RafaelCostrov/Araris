@@ -1,16 +1,20 @@
 from django.urls import path
 
 from apps.notifications.views import (
+    InternalNotificationSendView,
     NotificationListView,
     NotificationReadView,
     PushDeviceListCreateView,
-    TestNotificationView,
 )
 
 
 urlpatterns = [
     path("", NotificationListView.as_view(), name="notification-list"),
-    path("test/", TestNotificationView.as_view(), name="notification-test"),
+    path(
+        "internal/send/",
+        InternalNotificationSendView.as_view(),
+        name="notification-internal-send",
+    ),
     path(
         "push-devices/",
         PushDeviceListCreateView.as_view(),

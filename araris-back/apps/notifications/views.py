@@ -1,16 +1,18 @@
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.notifications.models import Notification, NotificationRecipient, PushDevice
 from apps.notifications.serializers import (
+    InternalNotificationSendSerializer,
     PushDeviceSerializer,
     UserNotificationSerializer,
 )
-from apps.notifications.services import create_test_notification
+from apps.notifications.services import create_and_send_notifications
+from apps.organizations.models import Organization
 
 
 class PushDeviceListCreateView(APIView):
@@ -76,19 +78,78 @@ class NotificationReadView(APIView):
         return Response(serializer.data)
 
 
-class TestNotificationView(APIView):
-    permission_classes = [IsAuthenticated]
+class InternalNotificationSendView(APIView):
+    permission_classes = [IsAdminUser]
 
     def post(self, request):
+        serializer = InternalNotificationSendSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        organization_ids = data["organization_ids"]
+        organizations_by_id = {
+            organization.id: organization
+            for organization in Organization.objects.filter(id__in=organization_ids)
+        }
+        missing_organization_ids = [
+            str(organization_id)
+            for organization_id in organization_ids
+            if organization_id not in organizations_by_id
+        ]
+        if missing_organization_ids:
+            return Response(
+                {
+                    "detail": "As seguintes empresas não foram encontradas: "
+                    + ", ".join(missing_organization_ids)
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        organizations = [
+            organizations_by_id[organization_id]
+            for organization_id in organization_ids
+        ]
+
         try:
-            notification = create_test_notification(request.user)
+            results = create_and_send_notifications(
+                organizations=organizations,
+                notification_type=data["type"],
+                title=data["title"],
+                message=data["message"],
+                priority=data["priority"],
+                data=data["data"],
+                requested_by=request.user,
+            )
         except ValueError as error:
             return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
-        recipient = get_object_or_404(
-            NotificationRecipient.objects.select_related("notification"),
-            notification=notification,
-            user=request.user,
+        response_results = []
+        for result in results:
+            alert = result["alert"]
+            notification = result["notification"]
+            response_results.append(
+                {
+                    "organization_id": notification.organization_id,
+                    "alert_id": alert.id,
+                    "notification_id": notification.id,
+                    "status": notification.status,
+                    "recipient_count": notification.recipients.count(),
+                    "sent_at": notification.sent_at,
+                    "delivery": result["delivery"],
+                }
+            )
+
+        return Response(
+            {
+                "organization_count": len(response_results),
+                "notification_count": len(response_results),
+                "sent_recipient_count": sum(
+                    result["delivery"]["sent"]
+                    for result in response_results
+                ),
+                "failed_recipient_count": sum(
+                    result["delivery"]["failed"]
+                    for result in response_results
+                ),
+                "results": response_results,
+            },
+            status=status.HTTP_201_CREATED,
         )
-        serializer = UserNotificationSerializer(recipient)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
