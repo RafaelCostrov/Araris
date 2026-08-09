@@ -20,6 +20,7 @@ import {
     useFonts,
 } from "@expo-google-fonts/poppins";
 import { Stack } from "expo-router/stack";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider } from "../contexts/AuthContext";
 
 export default function Layout() {
@@ -47,18 +48,20 @@ export default function Layout() {
   if (!fontsLoaded) return null;
 
   return (
-    <AuthProvider>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="login/index" options={{ headerShown: false }} />
-        <Stack.Screen name="register/index" options={{ headerShown: false }} />
-        <Stack.Screen name="privacy/index" options={{ headerShown: false }} />
-        <Stack.Screen name="about/index" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="(tabs)"
-          options={{ headerShown: false, gestureEnabled: false }}
-        />
-      </Stack>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <Stack>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="login/index" options={{ headerShown: false }} />
+          <Stack.Screen name="register/index" options={{ headerShown: false }} />
+          <Stack.Screen name="privacy/index" options={{ headerShown: false }} />
+          <Stack.Screen name="about/index" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="(tabs)"
+            options={{ headerShown: false, gestureEnabled: false }}
+          />
+        </Stack>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

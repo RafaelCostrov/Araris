@@ -2,8 +2,7 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { apiRequest } from "./apiClient";
-import { getTokens } from "./tokenStorage";
+import { authenticatedApiRequest } from "./apiClient";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -15,28 +14,12 @@ Notifications.setNotificationHandler({
   }),
 });
 
-async function authenticatedRequest(path, options = {}) {
-  const tokens = await getTokens();
-
-  if (!tokens?.access) {
-    throw new Error("Sessão expirada. Acesse sua conta novamente.");
-  }
-
-  return apiRequest(path, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${tokens.access}`,
-      ...(options.headers ?? {}),
-    },
-  });
-}
-
 export async function listNotifications() {
-  return authenticatedRequest("/notifications/");
+  return authenticatedApiRequest("/notifications/");
 }
 
 export async function markNotificationAsRead(notificationId) {
-  return authenticatedRequest(`/notifications/${notificationId}/read/`, {
+  return authenticatedApiRequest(`/notifications/${notificationId}/read/`, {
     method: "POST",
   });
 }
@@ -45,8 +28,25 @@ export function addNotificationReceivedListener(listener) {
   return Notifications.addNotificationReceivedListener(listener);
 }
 
+export async function getNotificationPermissionState() {
+  if (Platform.OS === "web") {
+    return {
+      status: "unsupported",
+      granted: false,
+      canAskAgain: false,
+    };
+  }
+
+  const permission = await Notifications.getPermissionsAsync();
+  return {
+    status: permission.status,
+    granted: permission.granted,
+    canAskAgain: permission.canAskAgain,
+  };
+}
+
 export async function registerPushDevice(payload) {
-  return authenticatedRequest("/notifications/push-devices/", {
+  return authenticatedApiRequest("/notifications/push-devices/", {
     method: "POST",
     body: JSON.stringify(payload),
   });

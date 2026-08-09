@@ -1,50 +1,134 @@
-# Araris — Plataforma de Gestão Financeira para MEIs
+# Araris — Gestão financeira para MEIs
 
-## O que é o Araris?
+O Araris é um aplicativo mobile para microempreendedores acompanharem o dinheiro realizado, os compromissos futuros e a saúde do caixa em uma experiência simples. O projeto combina uma API Django multiempresa, um aplicativo React Native e uma assistente financeira conversacional.
 
-O Araris é uma plataforma digital voltada para **Microempreendedores Individuais (MEIs)** que precisam organizar e acompanhar as finanças do seu negócio de forma simples e inteligente.
+## Estado atual do MVP
 
-A ideia central é reunir em um só lugar tudo o que um MEI precisa para manter as contas em dia, evitar surpresas e tomar decisões melhores sobre o futuro do negócio.
+| Área | Estado atual |
+| --- | --- |
+| Acesso | Cadastro de usuário e empresa, login local e Google, JWT persistido e edição de dados pessoais |
+| Financeiro | Entradas, saídas, contas a pagar e a receber, recorrências, baixa, edição e remoção |
+| Clientes e fornecedores | Cadastro opcional, pesquisa, edição, desativação e vínculo com atividades financeiras |
+| Home | Resumo mensal, saldo inicial e final, atividade recente e avisos de vencidos ou vencimentos de hoje |
+| Dashboard | Projeção determinística de 30 dias, histórico de 3, 6 ou 12 meses e segmentações por categoria, cliente e fornecedor |
+| Chatbot | Consultas financeiras e propostas confirmáveis de criação, edição ou remoção |
+| Notificações | Central mobile, registro de dispositivos e infraestrutura de push com Firebase |
+| Controle do DAS | Tela de implementação; regras tributárias e integração ainda não estão disponíveis |
 
----
+### Controle financeiro
 
-## O que o sistema oferece?
+O aplicativo diferencia movimentações já realizadas de compromissos futuros. Pagar uma conta cria a despesa correspondente; receber uma conta cria a receita correspondente. A baixa é transacional, não pode ser duplicada e preserva o cliente ou fornecedor associado.
 
-### Controle financeiro completo
-O MEI pode registrar todas as suas **entradas e saídas de dinheiro** — vendas, prestações de serviço, despesas com aluguel, materiais, transporte etc. Também é possível cadastrar contas que ainda vão vencer (a pagar ou a receber), com alertas automáticos quando os prazos se aproximam.
+As recorrências podem ser semanais, quinzenais, mensais, bimestrais, trimestrais, semestrais ou anuais. Elas aceitam quantidade definida ou uma série sem data final, mantida pelo backend dentro de uma janela futura.
 
-### Gestão de clientes e fornecedores
-Permite manter um cadastro simples das pessoas e empresas com quem o MEI trabalha, facilitando a associação de receitas e despesas a cada um deles.
+### Home e Dashboard
 
-### Controle do DAS (imposto mensal do MEI)
-O sistema acompanha o pagamento da guia mensal do DAS — o imposto obrigatório do MEI — e avisa quando o vencimento está chegando ou quando há inadimplência.
+A Home possui filtro mensal e abre o detalhamento dos valores usados em cada card. Pendências vencidas permanecem visíveis mesmo fora do mês selecionado. Os widgets de urgência priorizam contas vencidas e, quando não há atraso, mostram compromissos que vencem no dia.
 
-### Alertas e notificações inteligentes
-O Araris monitora automaticamente situações de risco e envia alertas: contas vencendo, DAS em atraso, limite de faturamento se aproximando, entre outros.
+O Dashboard usa a data atual e apresenta:
 
-### Simulação de crescimento
-Como o MEI tem um limite anual de faturamento (R$ 81.000,00), o sistema acompanha quanto já foi faturado no ano e avisa quando há risco de ultrapassar esse limite — o que exigiria migrar para outro tipo de empresa.
+- saldo realizado e projeção diária do caixa para 30 dias;
+- entradas e saídas nos últimos 3, 6 ou 12 meses;
+- despesas por categoria;
+- entradas por cliente e saídas por fornecedor;
+- principais compromissos que impactarão o caixa.
 
-### Previsão financeira com inteligência artificial
-Com base no histórico financeiro, o sistema consegue **prever receitas e despesas dos meses seguintes**, indicando se há risco de saldo negativo no futuro.
+A projeção atual é determinística: parte do saldo realizado, soma contas a receber e subtrai contas a pagar nas datas de vencimento. Ela não é uma previsão estatística ou gerada por IA.
 
-### Chatbot inteligente
-O MEI pode conversar com um assistente virtual que entende perguntas em linguagem natural, como *"Quanto eu faturei esse mês?"* ou *"Quais contas vencem essa semana?"*, e responde com as informações do próprio negócio.
+### Assistente financeira
 
-### Armazenamento de documentos
-É possível guardar comprovantes, notas fiscais e recibos diretamente na plataforma.
+O chatbot usa LangChain com Gemini como provedor principal e Groq como fallback quando ambos estão configurados. Ele consulta somente dados da empresa autorizada e pode preparar propostas para:
 
-### Contas com múltiplos usuários
-O dono do negócio pode convidar colaboradores (como um contador ou sócio) para acessar as informações da conta, com níveis de permissão diferentes.
+- criar, editar ou remover entradas e saídas;
+- criar, editar ou cancelar contas a pagar e a receber;
+- criar, editar ou desativar clientes e fornecedores.
 
----
+Nenhuma alteração é executada apenas porque o modelo respondeu. O usuário recebe um resumo e precisa confirmar a proposta no aplicativo. Pagamentos e recebimentos continuam sendo feitos exclusivamente pelas telas financeiras.
 
-## Para quem é?
+As respostas aceitam Markdown, com títulos, listas, ênfase, links, citações e blocos de código. Erros podem ser reenviados pelo botão **Tentar novamente**. A tela inicial sempre começa uma conversa nova; conversas recentes podem ser retomadas ou removidas com um gesto para a esquerda.
 
-Para qualquer **MEI brasileiro** que queira sair das planilhas e ter uma visão clara e organizada da saúde financeira do seu negócio — sem precisar entender de contabilidade.
+## O que ainda não faz parte do MVP
 
----
+- alertas automáticos de vencimento conectados ao push;
+- geração, consulta ou pagamento do DAS;
+- cálculo e alertas do limite anual do MEI;
+- previsão estatística ou por aprendizado de máquina;
+- upload de comprovantes e outros documentos;
+- convites, troca de empresa e permissões multiusuário completas;
+- billing, planos e cobrança SaaS.
 
-## Modelo de uso
+Esses itens permanecem no roadmap e não devem ser apresentados como recursos disponíveis.
 
-O Araris funciona no modelo **SaaS** (software como serviço), com um plano gratuito para experimentar e um plano premium que desbloqueia os recursos mais avançados, como a previsão por IA e o chatbot completo.
+## Arquitetura
+
+- **Aplicativo:** React Native, Expo 54, Expo Router, NativeWind, React Native Gifted Charts e React Native Gesture Handler.
+- **API:** Python, Django 5, Django REST Framework e Simple JWT.
+- **Banco:** PostgreSQL.
+- **IA:** LangChain, Google Gemini e Groq.
+- **Notificações:** Expo Notifications e Firebase Admin SDK.
+- **Integrações:** ViaCEP, BrasilAPI e Google OAuth.
+
+O backend é um monólito modular separado por domínio. O código está dividido em `araris-front`, para o aplicativo, e `araris-back`, para a API e as regras de negócio.
+
+## Configuração local
+
+### Backend
+
+Crie `araris-back/.env` com as configurações do Django, PostgreSQL e integrações necessárias. Para habilitar o chatbot, use:
+
+```env
+GEMINI_API_KEY=SUA_CHAVE_DO_GEMINI
+GEMINI_MODEL=gemini-3.6-flash
+GEMINI_REQUEST_TIMEOUT=30
+GROQ_API_KEY=SUA_CHAVE_DO_GROQ
+GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_REQUEST_TIMEOUT=30
+CHATBOT_HISTORY_MESSAGES=12
+CHATBOT_ACTION_EXPIRATION_MINUTES=15
+```
+
+Pelo menos uma chave de provedor é necessária para o chat. Com as duas configuradas, o Gemini é tentado primeiro e o Groq assume quando a chamada falha. As chaves pertencem somente ao backend e nunca devem receber o prefixo `EXPO_PUBLIC_`.
+
+```bash
+cd araris-back
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
+```
+
+### Aplicativo
+
+```bash
+cd araris-front
+npm install
+npx expo start
+```
+
+Em desenvolvimento, o app usa `10.0.2.2` no emulador Android, o host do servidor Metro em aparelhos físicos e `127.0.0.1` quando aplicável. URLs explícitas podem ser definidas por `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_API_URL_ANDROID`, `EXPO_PUBLIC_API_URL_IOS` e `EXPO_PUBLIC_API_URL_WEB`.
+
+O login Google depende de módulo nativo e deve ser testado em uma development build, não no Expo Go. O celular e o computador também precisam conseguir alcançar a mesma API na rede local.
+
+## Conta local de demonstração
+
+O comando abaixo é idempotente e prepara seis meses de dados para uma empresa fictícia de salão de beleza, incluindo clientes, fornecedores, movimentos realizados, recorrências e duas contas vencidas em 08/08/2026:
+
+```bash
+araris-back/.venv/bin/python araris-back/manage.py seed_demo_account \
+  --email b@a.com \
+  --password 'Senha@1235'
+```
+
+- Usuária: **Millena**
+- Empresa: **Studio Millena Cabelos & Beleza**
+- E-mail: `b@a.com`
+- Senha: `Senha@1235`
+
+Essa conta é somente para desenvolvimento e demonstração local. O comando não cria histórico do chatbot, para que as conversas possam ser demonstradas do zero.
+
+## Documentação
+
+- [Módulo financeiro](araris-back/apps/finance/README.md)
+- [Módulo de chatbot](araris-back/apps/chatbot/README.md)
+- [Módulo de notificações](araris-back/apps/notifications/README.md)

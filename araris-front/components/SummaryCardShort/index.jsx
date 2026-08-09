@@ -1,17 +1,28 @@
-import { View, Text, TouchableOpacity } from "react-native";
-import { MoreVertical, ArrowUp, ArrowDown } from "lucide-react-native";
+import { View, Text } from "react-native";
+import { ArrowUp, ArrowDown } from "lucide-react-native";
+import Card from "../Card";
 
-export default function SummaryCardShort({ icon, title, value, underValue, change, positive, period }) {
+export default function SummaryCardShort({
+  icon,
+  title,
+  value,
+  underValue,
+  change,
+  positive,
+  period,
+  onPress,
+}) {
   return (
-    <View className="bg-white rounded-2xl p-4 gap-1 shadow-sm flex-1">
-      <View className="flex-row justify-between items-center mb-4">
+    <Card
+      className="gap-1 flex-1"
+      onPress={onPress}
+      disabled={!onPress}
+    >
+      <View className="mb-2">
         {icon}
-        <TouchableOpacity activeOpacity={0.6} hitSlop={8}>
-          <MoreVertical color="#9ca3af" size={20} />
-        </TouchableOpacity>
       </View>
 
-      <Text className="text-gray-500 font-poppins-medium text-sm mb-1">{title}</Text>
+      <Text className="text-gray-500 font-poppins-medium text-sm mb-2">{title}</Text>
 
       <Text className="text-2xl text-center font-poppins-semibold text-texto-primario mb-4">{value}</Text>
 
@@ -26,12 +37,14 @@ export default function SummaryCardShort({ icon, title, value, underValue, chang
             <Text
               className={`font-poppins-medium text-sm ${positive ? "text-green-500" : "text-red-500"}`}
             >
-            {change}
+              {change}
             </Text>
           </View>
-        ) : <View />}
+        ) : (
+          <View />
+        )}
         <Text className="text-gray-400 font-poppins-light-italic text-sm">{period}</Text>
       </View>
-    </View>
+    </Card>
   );
 }

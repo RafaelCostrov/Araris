@@ -1,4 +1,4 @@
-import { apiRequest } from "./apiClient";
+import { apiRequest, authenticatedApiRequest } from "./apiClient";
 import { clearTokens, getTokens, saveTokens } from "./tokenStorage";
 
 function normalizeCurrency(value) {
@@ -153,6 +153,16 @@ export async function getMe() {
     headers: {
       Authorization: `Bearer ${tokens.access}`,
     },
+  });
+}
+
+export async function updateMe({ name, phone }) {
+  return authenticatedApiRequest("/accounts/me/", {
+    method: "PATCH",
+    body: JSON.stringify({
+      name: name.trim(),
+      phone: onlyDigits(phone),
+    }),
   });
 }
 

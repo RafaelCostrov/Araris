@@ -65,6 +65,8 @@ module.exports = () => {
     android: {
       edgeToEdgeEnabled: expo.android?.edgeToEdgeEnabled,
       predictiveBackGestureEnabled: expo.android?.predictiveBackGestureEnabled,
+      softwareKeyboardLayoutMode:
+        expo.android?.softwareKeyboardLayoutMode || "resize",
       package:
         process.env.EXPO_PUBLIC_ANDROID_PACKAGE ||
         expo.android?.package ||

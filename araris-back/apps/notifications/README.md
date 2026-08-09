@@ -6,6 +6,8 @@ O módulo de notificações centraliza alertas persistidos, destinatários, disp
 
 O usuário comum pode registrar seu dispositivo, listar suas notificações e marcar uma notificação como lida. Somente usuários administrativos podem disparar notificações manualmente.
 
+Os avisos de compromissos vencidos e que vencem hoje exibidos na Home pertencem ao resumo financeiro e são calculados ao carregar a tela. Eles ainda não geram notificações push automaticamente. A ligação entre eventos financeiros, agendamento e este módulo foi deliberadamente adiada.
+
 ## Estrutura atual
 
 ### Modelos
@@ -147,6 +149,8 @@ A central mobile:
 - Não existe agendamento de notificações.
 - Não existe uma entidade de campanha para acompanhar disparos amplos.
 - Não existe paginação na central de notificações.
+- Contas a pagar e a receber ainda não disparam alertas automáticos.
+- O módulo tributário ainda não produz alertas de DAS ou limite do MEI.
 
 ## Evoluções futuras
 

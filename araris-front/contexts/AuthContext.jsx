@@ -70,6 +70,13 @@ export function AuthProvider({ children }) {
     setSession(getEmptySession());
   }, []);
 
+  const updateSessionUser = useCallback((user) => {
+    setSession((currentSession) => ({
+      ...currentSession,
+      user,
+    }));
+  }, []);
+
   const value = useMemo(
     () => ({
       ...session,
@@ -77,8 +84,9 @@ export function AuthProvider({ children }) {
       isLoading,
       loadSession,
       signOut,
+      updateSessionUser,
     }),
-    [isLoading, loadSession, session, signOut],
+    [isLoading, loadSession, session, signOut, updateSessionUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

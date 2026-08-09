@@ -15,6 +15,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
+import { useFinancePeriod } from "../../contexts/FinancePeriodContext";
+import MonthSelector from "../MonthSelector";
 import {
   addNotificationReceivedListener,
   listNotifications,
@@ -22,12 +24,13 @@ import {
 } from "../../services/notificationService";
 
 
-export default function CustomHeader() {
+export default function CustomHeader({ showMonthSelector = true }) {
   const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
   const [isNotificationMenuVisible, setIsNotificationMenuVisible] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const { signOut, user } = useAuth();
+  const { selectedMonth, setSelectedMonth } = useFinancePeriod();
   const hasUnreadNotifications = notifications.some(
     (notification) => !notification.read_at,
   );
@@ -114,9 +117,9 @@ export default function CustomHeader() {
     }
   }
 
-  function showComingSoon(option) {
+  function openUserSection(path) {
     closeProfileMenu();
-    Alert.alert(option, "Essa área será implementada em breve.");
+    router.push(path);
   }
 
   async function handleLogout() {
@@ -148,7 +151,14 @@ export default function CustomHeader() {
           className="w-32 h-9"
           resizeMode="contain"
         />
-        <View className="flex-row items-center gap-4">
+        <View className="flex-row items-center gap-3">
+          {showMonthSelector ? (
+            <MonthSelector
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              variant="header"
+            />
+          ) : null}
           <TouchableOpacity
             className="relative p-1"
             activeOpacity={0.7}
@@ -162,15 +172,15 @@ export default function CustomHeader() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setIsProfileMenuVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir opções do usuário"
           >
-            <Image
-              source={require("../../assets/images/foto_perfil.png")}
-              className="w-9 h-9 rounded-full border border-white"
-            />
+            <View className="h-9 w-9 items-center justify-center rounded-full border border-white">
+              <User size={21} color="#ffffff" />
+            </View>
           </TouchableOpacity>
         </View>
       </View>
-
       <Modal
         transparent
         animationType="fade"
@@ -194,7 +204,7 @@ export default function CustomHeader() {
 
             <Pressable
               className="flex-row items-center gap-3 px-4 py-3 active:bg-gray-100"
-              onPress={() => showComingSoon("Conta")}
+              onPress={() => openUserSection("/(tabs)/account")}
             >
               <User size={20} color="#111827" />
               <Text className="font-poppins-medium text-texto-primario">
@@ -204,7 +214,7 @@ export default function CustomHeader() {
 
             <Pressable
               className="flex-row items-center gap-3 px-4 py-3 active:bg-gray-100"
-              onPress={() => showComingSoon("Configurações")}
+              onPress={() => openUserSection("/(tabs)/settings")}
             >
               <Settings size={20} color="#111827" />
               <Text className="font-poppins-medium text-texto-primario">

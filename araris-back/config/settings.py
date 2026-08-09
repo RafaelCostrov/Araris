@@ -28,6 +28,13 @@ def env_list(name, default=""):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def env_int(name, default):
+    try:
+        return int(os.getenv(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
 def unique_env_items(*items):
     seen = set()
     result = []
@@ -66,6 +73,7 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.tax",
     "apps.finance",
+    "apps.chatbot",
 ]
 
 MIDDLEWARE = [
@@ -156,6 +164,18 @@ FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 = os.getenv(
     "",
 ).strip()
 FCM_DRY_RUN = env_bool("FCM_DRY_RUN", True)
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
+GEMINI_REQUEST_TIMEOUT = env_int("GEMINI_REQUEST_TIMEOUT", 30)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
+GROQ_REQUEST_TIMEOUT = env_int("GROQ_REQUEST_TIMEOUT", 30)
+CHATBOT_HISTORY_MESSAGES = env_int("CHATBOT_HISTORY_MESSAGES", 12)
+CHATBOT_ACTION_EXPIRATION_MINUTES = max(
+    1,
+    min(env_int("CHATBOT_ACTION_EXPIRATION_MINUTES", 15), 1440),
+)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (

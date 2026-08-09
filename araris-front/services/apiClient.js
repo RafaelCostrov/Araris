@@ -1,5 +1,7 @@
 import Constants from "expo-constants";
+import * as Device from "expo-device";
 import { Platform } from "react-native";
+import { clearTokens, getTokens, saveTokens } from "./tokenStorage";
 
 const DEFAULT_API_URL = "http://127.0.0.1:8000/api";
 const ANDROID_EMULATOR_API_URL = "http://10.0.2.2:8000/api";
@@ -18,7 +20,7 @@ function getExpoDevServerHost() {
 }
 
 function getDevelopmentApiUrl() {
-  if (Platform.OS === "android") {
+  if (Platform.OS === "android" && !Device.isDevice) {
     return ANDROID_EMULATOR_API_URL;
   }
 
@@ -43,6 +45,13 @@ function getConfiguredApiUrl() {
         : process.env.EXPO_PUBLIC_API_URL_WEB;
 
   if (platformApiUrl) {
+    const isPhysicalAndroidUsingEmulatorHost =
+      Platform.OS === "android" &&
+      Device.isDevice &&
+      /10\.0\.2\.2|localhost|127\.0\.0\.1/.test(platformApiUrl);
+    if (isPhysicalAndroidUsingEmulatorHost) {
+      return "";
+    }
     return platformApiUrl;
   }
 
@@ -52,6 +61,14 @@ function getConfiguredApiUrl() {
   }
 
   if (Platform.OS === "android" && /localhost|127\.0\.0\.1/.test(apiUrl ?? "")) {
+    return "";
+  }
+
+  if (
+    Platform.OS === "android" &&
+    Device.isDevice &&
+    apiUrl?.includes("10.0.2.2")
+  ) {
     return "";
   }
 
@@ -98,6 +115,8 @@ export class ApiError extends Error {
   }
 }
 
+let refreshRequest = null;
+
 export async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -120,4 +139,81 @@ export async function apiRequest(path, options = {}) {
   }
 
   return data;
+}
+
+async function refreshAccessToken() {
+  if (!refreshRequest) {
+    refreshRequest = (async () => {
+      const tokens = await getTokens();
+
+      if (!tokens?.refresh) {
+        throw new ApiError("Sua sessão expirou. Acesse sua conta novamente.", 401);
+      }
+
+      const data = await apiRequest("/accounts/token/refresh/", {
+        method: "POST",
+        body: JSON.stringify({ refresh: tokens.refresh }),
+      });
+      const nextTokens = {
+        refresh: data.refresh ?? tokens.refresh,
+        access: data.access,
+      };
+      await saveTokens(nextTokens);
+      return nextTokens.access;
+    })().finally(() => {
+      refreshRequest = null;
+    });
+  }
+
+  return refreshRequest;
+}
+
+export async function authenticatedApiRequest(path, options = {}) {
+  const tokens = await getTokens();
+
+  if (!tokens?.access) {
+    throw new ApiError("Sua sessão expirou. Acesse sua conta novamente.", 401);
+  }
+
+  function send(accessToken) {
+    return apiRequest(path, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(options.headers ?? {}),
+      },
+    });
+  }
+
+  try {
+    return await send(tokens.access);
+  } catch (error) {
+    if (error.status !== 401) {
+      throw error;
+    }
+  }
+
+  let accessToken;
+
+  try {
+    accessToken = await refreshAccessToken();
+  } catch (error) {
+    if (error.status === 401) {
+      await clearTokens();
+      throw new ApiError("Sua sessão expirou. Acesse sua conta novamente.", 401);
+    }
+
+    throw error;
+  }
+
+  try {
+    return await send(accessToken);
+  } catch (error) {
+    if (error.status === 401) {
+      await clearTokens();
+      throw new ApiError("Sua sessão expirou. Acesse sua conta novamente.", 401);
+    }
+
+    throw error;
+  }
 }

@@ -14,6 +14,8 @@ from apps.accounts.serializers import (
     MeSerializer,
     RegisterResponseSerializer,
     RegisterSerializer,
+    UserProfileUpdateSerializer,
+    UserSerializer,
 )
 
 
@@ -79,3 +81,13 @@ class MeView(APIView):
         )
         serializer = MeSerializer({"user": request.user, "memberships": memberships})
         return Response(serializer.data)
+
+    def patch(self, request):
+        serializer = UserProfileUpdateSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response({"user": UserSerializer(user).data})

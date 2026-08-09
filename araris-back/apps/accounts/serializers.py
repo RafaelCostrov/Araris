@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
@@ -53,6 +55,43 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_name(self, obj):
         return obj.get_full_name() or obj.username
+
+
+class UserProfileUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    phone = serializers.CharField(
+        max_length=20,
+        required=False,
+        allow_blank=True,
+    )
+
+    def validate_name(self, value):
+        name = " ".join(value.split())
+        if not name:
+            raise serializers.ValidationError("Informe seu nome.")
+        return name
+
+    def validate_phone(self, value):
+        phone = re.sub(r"\D", "", value)
+        if phone and len(phone) not in {10, 11}:
+            raise serializers.ValidationError(
+                "Informe um telefone com DDD válido."
+            )
+        return phone
+
+    def update(self, instance, validated_data):
+        update_fields = []
+        if "name" in validated_data:
+            name_parts = validated_data["name"].split(maxsplit=1)
+            instance.first_name = name_parts[0]
+            instance.last_name = name_parts[1] if len(name_parts) > 1 else ""
+            update_fields.extend(["first_name", "last_name"])
+        if "phone" in validated_data:
+            instance.phone = validated_data["phone"]
+            update_fields.append("phone")
+        if update_fields:
+            instance.save(update_fields=update_fields)
+        return instance
 
 
 class RegisterSerializer(serializers.Serializer):
