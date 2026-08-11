@@ -4,6 +4,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -1348,9 +1349,10 @@ export default function Add() {
                         </View>
                         <Switch
                           value={form.recurrenceIndefinite}
-                          onValueChange={(value) =>
-                            updateForm("recurrenceIndefinite", value)
-                          }
+                          onValueChange={(value) => {
+                            Keyboard.dismiss();
+                            updateForm("recurrenceIndefinite", value);
+                          }}
                           trackColor={{ false: "#d1d5db", true: "#93c5fd" }}
                           thumbColor={
                             form.recurrenceIndefinite ? "#0063f5" : "#f9fafb"

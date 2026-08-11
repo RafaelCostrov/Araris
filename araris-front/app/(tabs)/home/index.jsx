@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   RefreshControl,
   ScrollView,
   View,
@@ -26,14 +26,15 @@ import {
   updateFinancialActivity,
 } from "../../../services/financeService";
 import { formatMonthPeriod } from "../../../utils/financeFormatters";
+import FinanceDetails from "../finance-details";
 
 export default function Home() {
-  const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
   const { currentOrganization, loadSession, user } = useAuth();
   const { selectedMonth } = useFinancePeriod();
   const [summary, setSummary] = useState(null);
   const [loadedSummaryPeriod, setLoadedSummaryPeriod] = useState(null);
+  const [financialDetailKind, setFinancialDetailKind] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [customers, setCustomers] = useState([]);
@@ -126,6 +127,25 @@ export default function Home() {
     }, [loadContacts]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!financialDetailKind) {
+        return undefined;
+      }
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          setFinancialDetailKind(null);
+          loadSummary();
+          return true;
+        },
+      );
+
+      return () => subscription.remove();
+    }, [financialDetailKind, loadSummary]),
+  );
+
   async function handleUpdate(payload) {
     if (!selectedItem) {
       return;
@@ -205,10 +225,21 @@ export default function Home() {
     Number(counts.due_today_receivables ?? 0);
 
   function openFinancialDetail(kind) {
-    router.push({
-      pathname: "/(tabs)/finance-details",
-      params: { kind },
-    });
+    setFinancialDetailKind(kind);
+  }
+
+  function closeFinancialDetail() {
+    setFinancialDetailKind(null);
+    loadSummary();
+  }
+
+  if (financialDetailKind) {
+    return (
+      <FinanceDetails
+        kindOverride={financialDetailKind}
+        onBack={closeFinancialDetail}
+      />
+    );
   }
 
   return (

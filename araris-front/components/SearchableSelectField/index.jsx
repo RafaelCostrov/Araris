@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Keyboard, Pressable, Text, TextInput, View } from "react-native";
 import { Check, Search, X } from "lucide-react-native";
 
 
@@ -53,6 +53,7 @@ export default function SearchableSelectField({
   }
 
   function handleSelect(option) {
+    Keyboard.dismiss();
     onChange(option.value);
     setQuery(option.value ? option.label : "");
     setIsOpen(false);

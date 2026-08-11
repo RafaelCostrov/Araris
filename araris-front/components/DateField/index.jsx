@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Keyboard,
   Modal,
   Pressable,
   Text,
@@ -106,6 +107,7 @@ export default function DateField({
   const canGoNext = !maxMonth || nextMonth <= maxMonth;
 
   function openCalendar() {
+    Keyboard.dismiss();
     const baseDate = selectedDate ?? new Date();
     setVisibleMonth(new Date(baseDate.getFullYear(), baseDate.getMonth(), 1));
     setIsOpen(true);

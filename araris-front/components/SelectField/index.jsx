@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Keyboard, Pressable, Text, View } from "react-native";
 import { Check, ChevronDown } from "lucide-react-native";
 
 export default function SelectField({
@@ -19,6 +19,11 @@ export default function SelectField({
     setIsOpen(false);
   }
 
+  function toggleOptions() {
+    Keyboard.dismiss();
+    setIsOpen((current) => !current);
+  }
+
   return (
     <View className="gap-1">
       <Text className="font-poppins-medium text-texto-secundario text-lg">
@@ -31,7 +36,7 @@ export default function SelectField({
           className={`bg-gray-100 rounded-lg p-3 border flex-row items-center justify-between ${
             error ? "border-red-500" : "border-transparent"
           }`}
-          onPress={() => setIsOpen((current) => !current)}
+          onPress={toggleOptions}
         >
           <Text
             className={`font-poppins-regular ${

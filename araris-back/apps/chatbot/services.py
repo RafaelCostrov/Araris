@@ -1,7 +1,7 @@
 import logging
 import unicodedata
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -50,11 +50,15 @@ class ChatbotProviderError(Exception):
     pass
 
 
+class ChatbotProviderResponseError(Exception):
+    pass
+
+
 @dataclass
 class FinancialReply:
     content: str
     pending_action_ids: list[str]
-    provider: str = "gemini"
+    provider: str = "groq"
     model: str = ""
 
 
@@ -97,7 +101,10 @@ def normalize_choice(value, choices, aliases=None):
     for code, label in choices:
         if normalized in {normalize_key(code), normalize_key(label)}:
             return code
-    raise PendingActionError(f"Valor inválido: {value}.")
+    allowed_labels = ", ".join(str(label) for _, label in choices)
+    raise PendingActionError(
+        f"Valor inválido: {value}. Opções válidas: {allowed_labels}."
+    )
 
 
 def normalize_amount(value):
@@ -111,6 +118,83 @@ def normalize_amount(value):
     if amount <= 0:
         raise PendingActionError("O valor deve ser maior que zero.")
     return f"{amount:.2f}"
+
+
+def normalize_boolean(value):
+    if isinstance(value, bool):
+        return value
+    normalized = normalize_key(value)
+    if normalized in {"true", "1", "sim", "yes"}:
+        return True
+    if normalized in {"false", "0", "nao", "no", ""}:
+        return False
+    raise PendingActionError("Informe verdadeiro ou falso para o campo booleano.")
+
+
+def normalize_date(value):
+    text = str(value or "").strip()
+    for date_format in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(text, date_format).date().isoformat()
+        except ValueError:
+            continue
+    raise PendingActionError(
+        "Informe uma data válida no formato DD/MM/AAAA ou AAAA-MM-DD."
+    )
+
+
+def normalize_category(entity_type, value, description=""):
+    if entity_type in {
+        PendingAction.EntityType.PAYABLE,
+        PendingAction.EntityType.EXPENSE,
+    }:
+        normalized_category = normalize_key(value)
+        if normalized_category in {"service", "services", "servico", "servicos"}:
+            normalized_description = normalize_key(description)
+            utility_terms = {"agua", "energia", "internet", "luz", "telefone"}
+            if any(term in normalized_description for term in utility_terms):
+                return ExpenseCategory.UTILITIES
+            return ExpenseCategory.OTHER
+        return normalize_choice(
+            value,
+            ExpenseCategory.choices,
+            {
+                "material": ExpenseCategory.SUPPLIES,
+                "materiais": ExpenseCategory.SUPPLIES,
+                "insumo": ExpenseCategory.SUPPLIES,
+                "insumos": ExpenseCategory.SUPPLIES,
+                "locacao": ExpenseCategory.RENT,
+                "agua": ExpenseCategory.UTILITIES,
+                "energia": ExpenseCategory.UTILITIES,
+                "internet": ExpenseCategory.UTILITIES,
+                "luz": ExpenseCategory.UTILITIES,
+                "contas de consumo": ExpenseCategory.UTILITIES,
+                "imposto": ExpenseCategory.TAXES,
+                "salario": ExpenseCategory.SALARIES,
+                "salarios": ExpenseCategory.SALARIES,
+                "folha de pagamento": ExpenseCategory.SALARIES,
+                "tarifa": ExpenseCategory.BANK_FEES,
+                "tarifas": ExpenseCategory.BANK_FEES,
+                "taxa bancaria": ExpenseCategory.BANK_FEES,
+                "taxas bancarias": ExpenseCategory.BANK_FEES,
+                "outro": ExpenseCategory.OTHER,
+            },
+        )
+
+    return normalize_choice(
+        value,
+        RevenueCategory.choices,
+        {
+            "venda": RevenueCategory.SALES,
+            "sale": RevenueCategory.SALES,
+            "servico": RevenueCategory.SERVICES,
+            "service": RevenueCategory.SERVICES,
+            "refund": RevenueCategory.REFUND,
+            "estorno": RevenueCategory.REFUND,
+            "aplicacao": RevenueCategory.INVESTMENT,
+            "outro": RevenueCategory.OTHER,
+        },
+    )
 
 
 ENTITY_ALIASES = {
@@ -217,7 +301,7 @@ def build_financial_tools(
     def consultar_compromissos(
         tipo: str = "todos",
         situacao: str = "todos",
-        dias: int = 30,
+        dias: int | str = 30,
     ) -> dict:
         """Lista contas a pagar e a receber. tipo: todos, pagar ou receber. situacao: todos, pendentes ou vencidos. dias define o horizonte futuro."""
         if tipo not in {"todos", "pagar", "receber"}:
@@ -294,7 +378,7 @@ def build_financial_tools(
         }
 
     @tool
-    def consultar_projecao_de_caixa(dias: int = 30) -> dict:
+    def consultar_projecao_de_caixa(dias: int | str = 30) -> dict:
         """Consulta o saldo projetado usando o saldo atual e as contas pendentes dos próximos dias. O intervalo permitido é de 7 a 60 dias."""
         try:
             forecast_days = max(7, min(int(dias), 60))
@@ -366,7 +450,7 @@ def build_financial_tools(
         }
 
     @tool
-    def consultar_lancamentos_recentes(limite: int = 10) -> dict:
+    def consultar_lancamentos_recentes(limite: int | str = 10) -> dict:
         """Consulta as entradas e saídas já realizadas mais recentes."""
         try:
             item_limit = max(1, min(int(limite), 20))
@@ -418,9 +502,9 @@ def build_financial_tools(
     def consultar_clientes_e_fornecedores(
         tipo: str = "todos",
         busca: str = "",
-        limite: int = 20,
+        limite: int | str = 20,
     ) -> dict:
-        """Lista clientes e fornecedores ativos da empresa. tipo: todos, clientes ou fornecedores. busca filtra por nome, CPF/CNPJ, e-mail ou telefone."""
+        """Lista clientes e fornecedores ativos da empresa. tipo: todos, clientes ou fornecedores. busca filtra por nome, CPF/CNPJ, e-mail ou telefone. Sempre consulte esta ferramenta antes de perguntar se um cliente ou fornecedor citado pelo usuário está cadastrado."""
         if tipo not in {"todos", "clientes", "fornecedores"}:
             return {
                 "erro": "Tipo inválido. Use todos, clientes ou fornecedores."
@@ -480,7 +564,7 @@ def build_financial_tools(
         nome: str,
         mes: str = "",
         tipo: str = "todos",
-        limite: int = 20,
+        limite: int | str = 20,
     ) -> dict:
         """Consulta entradas, saídas e compromissos pendentes vinculados a um cliente ou fornecedor. nome é o nome ou parte do nome; tipo: todos, clientes ou fornecedores; mes usa AAAA-MM ou vazio para o mês atual."""
         if tipo not in {"todos", "clientes", "fornecedores"}:
@@ -672,7 +756,7 @@ def build_financial_tools(
     def buscar_registros_para_acao(
         tipo: str,
         busca: str = "",
-        limite: int = 10,
+        limite: int | str = 10,
     ) -> dict:
         """Busca registros e retorna IDs seguros para preparar edição ou exclusão. tipo: conta a pagar, conta a receber, entrada, saída, cliente ou fornecedor. Sempre use antes de editar ou excluir e nunca invente um ID."""
         try:
@@ -756,14 +840,14 @@ def build_financial_tools(
     def preparar_criacao_lancamento(
         tipo: str,
         descricao: str,
-        valor: str,
+        valor: str | int | float,
         data: str,
         categoria: str,
         forma_pagamento: str,
         cliente_ou_fornecedor: str = "",
         observacoes: str = "",
     ) -> dict:
-        """Prepara, sem executar, uma entrada ou saída realizada para confirmação. tipo: entrada ou saída. data: AAAA-MM-DD. categoria e forma_pagamento podem usar o código ou rótulo em português. cliente_ou_fornecedor é nome ou ID opcional."""
+        """Prepara, sem executar, uma entrada ou saída realizada para confirmação. tipo: entrada ou saída. data: DD/MM/AAAA ou AAAA-MM-DD. Categorias de entrada: sales, services, refund, investment ou other. Categorias de saída: supplies, rent, utilities, transportation, taxes, marketing, salaries, bank_fees ou other. forma_pagamento pode usar o código ou rótulo em português. cliente_ou_fornecedor é nome ou ID opcional; quando o usuário citar um contato, consulte o cadastro antes e não omita esse vínculo silenciosamente."""
         try:
             entity_type = normalize_entity_type(tipo)
             if entity_type not in {
@@ -771,17 +855,16 @@ def build_financial_tools(
                 PendingAction.EntityType.EXPENSE,
             }:
                 raise PendingActionError("Use tipo entrada ou saída.")
-            category_choices = (
-                RevenueCategory.choices
-                if entity_type == PendingAction.EntityType.REVENUE
-                else ExpenseCategory.choices
-            )
             contact = resolve_contact(entity_type, cliente_ou_fornecedor)
             payload = {
                 "description": descricao.strip(),
                 "amount": normalize_amount(valor),
-                "occurred_on": data,
-                "category": normalize_choice(categoria, category_choices),
+                "occurred_on": normalize_date(data),
+                "category": normalize_category(
+                    entity_type,
+                    categoria,
+                    descricao,
+                ),
                 "payment_method": normalize_choice(
                     forma_pagamento,
                     PaymentMethod.choices,
@@ -804,16 +887,16 @@ def build_financial_tools(
     def preparar_criacao_compromisso(
         tipo: str,
         descricao: str,
-        valor: str,
+        valor: str | int | float,
         vencimento: str,
         categoria: str,
         cliente_ou_fornecedor: str = "",
         periodicidade: str = "none",
-        ocorrencias: int = 1,
-        sem_data_final: bool = False,
+        ocorrencias: int | str = 1,
+        sem_data_final: bool | str | int = False,
         observacoes: str = "",
     ) -> dict:
-        """Prepara, sem executar, uma conta a pagar ou receber para confirmação. tipo: conta a pagar ou conta a receber. vencimento: AAAA-MM-DD. periodicidade: none, weekly, fortnightly, monthly, bimonthly, quarterly, semiannual ou annual. Informe ocorrencias >= 2 quando recorrente, ou sem_data_final=true."""
+        """Prepara, sem executar, uma conta a pagar ou receber para confirmação. tipo: conta a pagar ou conta a receber. vencimento: DD/MM/AAAA ou AAAA-MM-DD. Categorias de conta a pagar: supplies, rent, utilities, transportation, taxes, marketing, salaries, bank_fees ou other. Categorias de conta a receber: sales, services, refund, investment ou other. periodicidade: none, weekly, fortnightly, monthly, bimonthly, quarterly, semiannual ou annual. Informe ocorrencias >= 2 quando recorrente, ou sem_data_final=true. Quando o usuário citar um contato, consulte o cadastro antes e não omita esse vínculo silenciosamente."""
         try:
             entity_type = normalize_entity_type(tipo)
             if entity_type not in {
@@ -823,11 +906,6 @@ def build_financial_tools(
                 raise PendingActionError(
                     "Use tipo conta a pagar ou conta a receber."
                 )
-            category_choices = (
-                ExpenseCategory.choices
-                if entity_type == PendingAction.EntityType.PAYABLE
-                else RevenueCategory.choices
-            )
             recurrence = normalize_choice(
                 periodicidade,
                 RecurrenceFrequency.choices,
@@ -840,10 +918,14 @@ def build_financial_tools(
             payload = {
                 "description": descricao.strip(),
                 "amount": normalize_amount(valor),
-                "due_date": vencimento,
-                "category": normalize_choice(categoria, category_choices),
+                "due_date": normalize_date(vencimento),
+                "category": normalize_category(
+                    entity_type,
+                    categoria,
+                    descricao,
+                ),
                 "recurrence": recurrence,
-                "recurrence_indefinite": sem_data_final,
+                "recurrence_indefinite": normalize_boolean(sem_data_final),
                 "occurrences": int(ocorrencias),
                 "notes": observacoes.strip(),
                 (
@@ -893,17 +975,17 @@ def build_financial_tools(
         tipo: str,
         registro_id: str,
         descricao_ou_nome: str = "",
-        valor: str = "",
+        valor: str | int | float = "",
         data: str = "",
         categoria: str = "",
         forma_pagamento: str = "",
         cliente_ou_fornecedor: str = "",
-        remover_cliente_ou_fornecedor: bool = False,
+        remover_cliente_ou_fornecedor: bool | str | int = False,
         documento: str = "",
         email: str = "",
         telefone: str = "",
         observacoes: str = "",
-        limpar_observacoes: bool = False,
+        limpar_observacoes: bool | str | int = False,
     ) -> dict:
         """Prepara, sem executar, a edição de um registro existente. Use um registro_id retornado por buscar_registros_para_acao. Envie somente os campos que mudam. data representa vencimento para compromissos e data realizada para entradas/saídas."""
         try:
@@ -913,6 +995,10 @@ def build_financial_tools(
                 organization=organization,
                 target_id=registro_id,
             )
+            should_remove_contact = normalize_boolean(
+                remover_cliente_ou_fornecedor
+            )
+            should_clear_notes = normalize_boolean(limpar_observacoes)
             payload = {}
             if descricao_ou_nome.strip():
                 payload[
@@ -946,20 +1032,12 @@ def build_financial_tools(
                             PendingAction.EntityType.RECEIVABLE,
                         }
                         else "occurred_on"
-                    ] = data
+                    ] = normalize_date(data)
                 if categoria:
-                    category_choices = (
-                        ExpenseCategory.choices
-                        if entity_type
-                        in {
-                            PendingAction.EntityType.PAYABLE,
-                            PendingAction.EntityType.EXPENSE,
-                        }
-                        else RevenueCategory.choices
-                    )
-                    payload["category"] = normalize_choice(
+                    payload["category"] = normalize_category(
+                        entity_type,
                         categoria,
-                        category_choices,
+                        payload.get("description", target.description),
                     )
                 if forma_pagamento:
                     if entity_type in {
@@ -973,7 +1051,7 @@ def build_financial_tools(
                         forma_pagamento,
                         PaymentMethod.choices,
                     )
-                if remover_cliente_ou_fornecedor:
+                if should_remove_contact:
                     payload[
                         "supplier_id"
                         if entity_type
@@ -994,8 +1072,8 @@ def build_financial_tools(
                         }
                         else "customer_id"
                     ] = str(contact.id)
-            if observacoes or limpar_observacoes:
-                payload["notes"] = "" if limpar_observacoes else observacoes.strip()
+            if observacoes or should_clear_notes:
+                payload["notes"] = "" if should_clear_notes else observacoes.strip()
             if not payload:
                 raise PendingActionError("Informe ao menos um campo para editar.")
 
@@ -1076,9 +1154,20 @@ Regras obrigatórias:
   o ID exato da opção escolhida. Nunca invente, deduza ou reutilize um ID sem a busca.
 - Se a busca retornar mais de uma opção possível, apresente as diferenças e pergunte qual delas
   o usuário deseja alterar antes de preparar a proposta.
+- Cliente e fornecedor são vínculos opcionais, mas nunca pergunte se um nome está cadastrado antes
+  de consultar `consultar_clientes_e_fornecedores`. Se o usuário relacionar uma atividade a uma
+  pessoa ou empresa, faça essa consulta primeiro. Com uma correspondência exata, use o cadastro na
+  proposta. Se não encontrar, informe isso e pergunte se deve cadastrar ou prosseguir sem vínculo.
+  Se houver mais de uma correspondência, apresente as opções e peça a escolha.
+- Nunca transforme silenciosamente o nome de um cliente ou fornecedor apenas em parte da descrição.
 - Só prepare uma proposta quando os dados obrigatórios estiverem completos e sem ambiguidade.
   Caso falte algo, faça uma pergunta objetiva em vez de presumir o valor.
 - Prepare uma proposta para cada ação explicitamente solicitada. Não acrescente outras alterações.
+- Se uma ferramenta retornar erro, nunca repita a mesma chamada com os mesmos argumentos.
+  Corrija o argumento conforme as opções retornadas ou faça uma pergunta objetiva ao usuário.
+- Quando uma preparação retornar `aguardando_confirmacao`, a proposta já está pronta. Não repita
+  a ferramenta. Não repita valores, categorias ou datas na resposta: o backend exibirá um texto
+  curto e o card de confirmação com o resumo completo.
 - Pagar ou receber compromissos continua indisponível pelo chat; oriente o usuário a usar o botão
   correspondente no aplicativo quando ele pedir uma baixa.
 - Para qualquer número financeiro, consulte uma ferramenta. Nunca estime nem invente dados.
@@ -1119,20 +1208,69 @@ def extract_assistant_text(result):
     return "Não encontrei uma resposta para essa consulta. Tente reformular a pergunta."
 
 
+def finalize_assistant_content(content, pending_actions):
+    if pending_actions:
+        if len(pending_actions) == 1:
+            return (
+                "Proposta pronta para revisão ✅\n\n"
+                "Confira os dados no card abaixo e toque em **Confirmar** "
+                "para concluir o registro."
+            )
+        return (
+            f"Preparei **{len(pending_actions)} propostas** para revisão ✅\n\n"
+            "Confira cada card abaixo e confirme somente o que estiver correto."
+        )
+
+    normalized_content = normalize_key(content)
+    for marker in "*_#`":
+        normalized_content = normalized_content.replace(marker, " ")
+    normalized_content = " ".join(normalized_content.split())
+    unsupported_claims = (
+        "preparei a proposta",
+        "preparei uma proposta",
+        "criei a proposta",
+        "proposta esta pronta",
+        "proposta foi preparada",
+        "proposta pronta para",
+        "confirme no card",
+        "card exibido no aplicativo",
+        "aguardando sua confirmacao",
+        "toque em confirmar",
+    )
+    if any(claim in normalized_content for claim in unsupported_claims):
+        raise ChatbotProviderResponseError(
+            "O provedor afirmou ter preparado uma proposta sem gerar uma ação."
+        )
+    return content
+
+
 def configured_chatbot_providers():
     providers = []
+    if settings.GROQ_API_KEY:
+        groq_models = dict.fromkeys(
+            filter(
+                None,
+                (
+                    settings.GROQ_MODEL,
+                    settings.GROQ_FALLBACK_MODEL,
+                ),
+            )
+        )
+        for model in groq_models:
+            providers.append(
+                {
+                    "name": "groq",
+                    "model": model,
+                    "reasoning_effort": (
+                        "none" if model.startswith("qwen/") else "low"
+                    ),
+                }
+            )
     if settings.GEMINI_API_KEY:
         providers.append(
             {
                 "name": "gemini",
                 "model": settings.GEMINI_MODEL,
-            }
-        )
-    if settings.GROQ_API_KEY:
-        providers.append(
-            {
-                "name": "groq",
-                "model": settings.GROQ_MODEL,
             }
         )
     return providers
@@ -1154,6 +1292,9 @@ def build_chatbot_model(provider):
             temperature=0,
             max_retries=1,
             timeout=settings.GROQ_REQUEST_TIMEOUT,
+            max_tokens=settings.GROQ_MAX_OUTPUT_TOKENS,
+            reasoning_effort=provider.get("reasoning_effort"),
+            reasoning_format="hidden",
         )
     raise ChatbotConfigurationError("Provedor do chatbot não reconhecido.")
 
@@ -1200,8 +1341,12 @@ def generate_reply_with_provider(
         fail_pending_actions(pending_actions)
         raise
 
+    content = finalize_assistant_content(
+        extract_assistant_text(result),
+        pending_actions,
+    )
     return FinancialReply(
-        content=extract_assistant_text(result),
+        content=content,
         pending_action_ids=[str(action.id) for action in pending_actions],
         provider=provider["name"],
         model=provider["model"],

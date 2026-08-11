@@ -169,9 +169,17 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
 GEMINI_REQUEST_TIMEOUT = env_int("GEMINI_REQUEST_TIMEOUT", 30)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.6-27b").strip()
+GROQ_FALLBACK_MODEL = os.getenv(
+    "GROQ_FALLBACK_MODEL",
+    "openai/gpt-oss-20b",
+).strip()
 GROQ_REQUEST_TIMEOUT = env_int("GROQ_REQUEST_TIMEOUT", 30)
-CHATBOT_HISTORY_MESSAGES = env_int("CHATBOT_HISTORY_MESSAGES", 12)
+GROQ_MAX_OUTPUT_TOKENS = max(
+    200,
+    min(env_int("GROQ_MAX_OUTPUT_TOKENS", 800), 2000),
+)
+CHATBOT_HISTORY_MESSAGES = env_int("CHATBOT_HISTORY_MESSAGES", 6)
 CHATBOT_ACTION_EXPIRATION_MINUTES = max(
     1,
     min(env_int("CHATBOT_ACTION_EXPIRATION_MINUTES", 15), 1440),

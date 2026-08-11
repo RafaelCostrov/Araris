@@ -58,8 +58,8 @@ def persist_assistant_reply(*, conversation, generated_reply):
     if isinstance(generated_reply, str):
         reply = generated_reply
         pending_action_ids = []
-        provider = "gemini"
-        model = settings.GEMINI_MODEL
+        provider = "groq"
+        model = settings.GROQ_MODEL
     else:
         reply = generated_reply.content
         pending_action_ids = generated_reply.pending_action_ids

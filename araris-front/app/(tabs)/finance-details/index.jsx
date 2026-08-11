@@ -259,15 +259,20 @@ function CommitmentCard({ item, onSettle, onEdit }) {
   );
 }
 
-export default function FinanceDetails() {
+export default function FinanceDetails({ kindOverride, onBack } = {}) {
   const router = useRouter();
   const params = useLocalSearchParams();
   const tabBarHeight = useBottomTabBarHeight();
   const { currentOrganization, loadSession } = useAuth();
   const { selectedMonth } = useFinancePeriod();
-  const kind = Array.isArray(params.kind) ? params.kind[0] : params.kind;
+  const requestedKind = Array.isArray(params.kind)
+    ? params.kind.at(-1)
+    : params.kind;
+  const resolvedKind = kindOverride ?? requestedKind;
+  const kind = DETAIL_CONFIG[resolvedKind] ? resolvedKind : "balance";
   const config = DETAIL_CONFIG[kind] ?? DETAIL_CONFIG.balance;
   const ConfigIcon = config.icon;
+  const currentDataKey = `${currentOrganization?.id ?? "no-organization"}:${kind}:${selectedMonth}`;
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loadedDataKey, setLoadedDataKey] = useState(null);
@@ -289,6 +294,8 @@ export default function FinanceDetails() {
   const [suppliers, setSuppliers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const detailsRequestId = useRef(0);
+  const contactsRequestId = useRef(0);
+  const scrollRef = useRef(null);
 
   const loadDetails = useCallback(async () => {
     if (!currentOrganization?.id) {
@@ -296,17 +303,13 @@ export default function FinanceDetails() {
     }
 
     const requestId = detailsRequestId.current + 1;
-    const requestDataKey = `${kind ?? "balance"}:${selectedMonth}`;
+    const requestDataKey = currentDataKey;
     detailsRequestId.current = requestId;
 
     try {
       setIsLoading(true);
       setLoadError("");
       setLoadErrorKey(null);
-      const [customerData, supplierData] = await Promise.all([
-        listCustomers(currentOrganization.id),
-        listSuppliers(currentOrganization.id),
-      ]);
       let nextItems = [];
       let nextSummary = null;
 
@@ -412,8 +415,6 @@ export default function FinanceDetails() {
       if (requestId !== detailsRequestId.current) {
         return;
       }
-      setCustomers(customerData);
-      setSuppliers(supplierData);
       setItems(nextItems);
       setSummary(nextSummary);
       setLoadedDataKey(requestDataKey);
@@ -432,7 +433,41 @@ export default function FinanceDetails() {
         setIsLoading(false);
       }
     }
-  }, [currentOrganization?.id, kind, loadSession, selectedMonth]);
+  }, [
+    currentDataKey,
+    currentOrganization?.id,
+    kind,
+    loadSession,
+    selectedMonth,
+  ]);
+
+  const loadContacts = useCallback(async () => {
+    if (!currentOrganization?.id) {
+      return;
+    }
+
+    const requestId = contactsRequestId.current + 1;
+    contactsRequestId.current = requestId;
+
+    try {
+      const [customerData, supplierData] = await Promise.all([
+        listCustomers(currentOrganization.id),
+        listSuppliers(currentOrganization.id),
+      ]);
+      if (requestId !== contactsRequestId.current) {
+        return;
+      }
+      setCustomers(customerData);
+      setSuppliers(supplierData);
+    } catch (error) {
+      if (requestId !== contactsRequestId.current) {
+        return;
+      }
+      if (error.status === 401) {
+        await loadSession();
+      }
+    }
+  }, [currentOrganization?.id, loadSession]);
 
   const refreshDetails = useCallback(async () => {
     setIsRefreshing(true);
@@ -445,8 +480,15 @@ export default function FinanceDetails() {
 
   useFocusEffect(
     useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
       loadDetails();
-    }, [loadDetails]),
+      loadContacts();
+
+      return () => {
+        detailsRequestId.current += 1;
+        contactsRequestId.current += 1;
+      };
+    }, [loadContacts, loadDetails]),
   );
 
   function openSettlement(item) {
@@ -623,7 +665,6 @@ export default function FinanceDetails() {
     );
   }
 
-  const currentDataKey = `${kind ?? "balance"}:${selectedMonth}`;
   const hasCurrentData = loadedDataKey === currentDataKey;
   const currentLoadError =
     loadErrorKey === currentDataKey ? loadError : "";
@@ -651,6 +692,8 @@ export default function FinanceDetails() {
   return (
     <View className="flex-1 bg-gray-50">
       <ScrollView
+        key={currentDataKey}
+        ref={scrollRef}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
@@ -664,7 +707,7 @@ export default function FinanceDetails() {
         <View className="w-[90%] self-center pt-5 gap-5">
           <Pressable
             className="self-start flex-row items-center gap-2 py-1"
-            onPress={() => router.back()}
+            onPress={onBack ?? (() => router.back())}
           >
             <ArrowLeft size={20} color="#0063f5" />
             <Text className="font-poppins-semibold text-azul-primario">

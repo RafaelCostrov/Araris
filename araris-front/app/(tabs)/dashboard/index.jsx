@@ -759,7 +759,7 @@ export default function Dashboard() {
             : undefined,
         dataPointColor:
           Number(item.projected_balance) < 0 ? "#dc2626" : "#2563eb",
-        dataPointRadius: item.commitments.length > 0 ? 4 : 2,
+        dataPointRadius: item.commitments.length > 0 ? 8 : 6,
         hideDataPoint: item.commitments.length === 0 && index % 7 !== 0,
         onPress: () => setDetail({ type: "day", data: item }),
       })),

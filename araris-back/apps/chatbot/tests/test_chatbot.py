@@ -15,8 +15,10 @@ from apps.chatbot.actions import (
 from apps.chatbot.models import ChatMessage, Conversation, PendingAction
 from apps.chatbot.services import (
     ChatbotProviderError,
+    ChatbotProviderResponseError,
     FinancialReply,
     build_financial_tools,
+    finalize_assistant_content,
     generate_financial_reply,
 )
 from apps.finance.models import (
@@ -270,21 +272,43 @@ class ChatbotProviderFallbackTests(APITestCase):
             content="Qual é o meu saldo?",
         )
 
+    def test_pending_action_response_uses_the_confirmation_card_summary(self):
+        content = finalize_assistant_content(
+            "Preparei uma resposta longa repetindo valor, data e categoria.",
+            [object()],
+        )
+
+        self.assertIn("Proposta pronta para revisão", content)
+        self.assertIn("card abaixo", content)
+        self.assertNotIn("valor", content)
+        self.assertNotIn("categoria", content)
+
+    def test_provider_cannot_claim_an_action_that_was_not_created(self):
+        with self.assertRaises(ChatbotProviderResponseError):
+            finalize_assistant_content(
+                "Preparei **a proposta**. Toque em Confirmar no card.",
+                [],
+            )
+
     @override_settings(
         GEMINI_API_KEY="gemini-test-key",
         GEMINI_MODEL="gemini-test-model",
         GROQ_API_KEY="groq-test-key",
-        GROQ_MODEL="groq-test-model",
+        GROQ_MODEL="qwen-test-model",
+        GROQ_FALLBACK_MODEL="cheap-groq-test-model",
     )
     @patch("apps.chatbot.services.generate_reply_with_provider")
-    def test_groq_is_used_after_gemini_failure(self, generate_with_provider):
+    def test_second_groq_model_is_used_after_primary_failure(
+        self,
+        generate_with_provider,
+    ):
         generate_with_provider.side_effect = [
-            RuntimeError("Falha simulada no Gemini"),
+            RuntimeError("Falha simulada no Qwen"),
             FinancialReply(
-                content="Resposta pelo fallback.",
+                content="Resposta pelo segundo modelo Groq.",
                 pending_action_ids=[],
                 provider="groq",
-                model="groq-test-model",
+                model="cheap-groq-test-model",
             ),
         ]
 
@@ -294,12 +318,58 @@ class ChatbotProviderFallbackTests(APITestCase):
         )
 
         self.assertEqual(reply.provider, "groq")
-        self.assertEqual(generate_with_provider.call_count, 2)
-        providers = [
-            call.kwargs["provider"]["name"]
+        self.assertEqual(reply.model, "cheap-groq-test-model")
+        models = [
+            call.kwargs["provider"]["model"]
             for call in generate_with_provider.call_args_list
         ]
-        self.assertEqual(providers, ["gemini", "groq"])
+        self.assertEqual(models, ["qwen-test-model", "cheap-groq-test-model"])
+
+    @override_settings(
+        GEMINI_API_KEY="gemini-test-key",
+        GEMINI_MODEL="gemini-test-model",
+        GROQ_API_KEY="groq-test-key",
+        GROQ_MODEL="qwen-test-model",
+        GROQ_FALLBACK_MODEL="cheap-groq-test-model",
+    )
+    @patch("apps.chatbot.services.generate_reply_with_provider")
+    def test_gemini_is_used_after_both_groq_models_fail(
+        self,
+        generate_with_provider,
+    ):
+        generate_with_provider.side_effect = [
+            RuntimeError("Falha simulada no Qwen"),
+            RuntimeError("Falha simulada no segundo Groq"),
+            FinancialReply(
+                content="Resposta pelo fallback.",
+                pending_action_ids=[],
+                provider="gemini",
+                model="gemini-test-model",
+            ),
+        ]
+
+        reply = generate_financial_reply(
+            conversation=self.conversation,
+            organization=self.organization,
+        )
+
+        self.assertEqual(reply.provider, "gemini")
+        self.assertEqual(generate_with_provider.call_count, 3)
+        provider_models = [
+            (
+                call.kwargs["provider"]["name"],
+                call.kwargs["provider"]["model"],
+            )
+            for call in generate_with_provider.call_args_list
+        ]
+        self.assertEqual(
+            provider_models,
+            [
+                ("groq", "qwen-test-model"),
+                ("groq", "cheap-groq-test-model"),
+                ("gemini", "gemini-test-model"),
+            ],
+        )
 
 
 class PendingActionTests(APITestCase):
@@ -444,28 +514,80 @@ class PendingActionTests(APITestCase):
             )
         }
 
+        for tool_name, argument_name in (
+            ("buscar_registros_para_acao", "limite"),
+            ("preparar_criacao_compromisso", "ocorrencias"),
+        ):
+            with self.subTest(tool=tool_name, argument=argument_name):
+                argument_schema = tools[
+                    tool_name
+                ].args_schema.model_json_schema()["properties"][argument_name]
+                allowed_types = {
+                    option.get("type") for option in argument_schema.get("anyOf", [])
+                }
+                self.assertEqual(allowed_types, {"integer", "string"})
+
+        for tool_name in (
+            "preparar_criacao_lancamento",
+            "preparar_criacao_compromisso",
+            "preparar_edicao_registro",
+        ):
+            with self.subTest(tool=tool_name, argument="valor"):
+                argument_schema = tools[
+                    tool_name
+                ].args_schema.model_json_schema()["properties"]["valor"]
+                allowed_types = {
+                    option.get("type") for option in argument_schema.get("anyOf", [])
+                }
+                self.assertEqual(
+                    allowed_types,
+                    {"integer", "number", "string"},
+                )
+
+        for tool_name, argument_name in (
+            ("preparar_criacao_compromisso", "sem_data_final"),
+            ("preparar_edicao_registro", "remover_cliente_ou_fornecedor"),
+            ("preparar_edicao_registro", "limpar_observacoes"),
+        ):
+            with self.subTest(tool=tool_name, argument=argument_name):
+                argument_schema = tools[
+                    tool_name
+                ].args_schema.model_json_schema()["properties"][argument_name]
+                allowed_types = {
+                    option.get("type") for option in argument_schema.get("anyOf", [])
+                }
+                self.assertEqual(
+                    allowed_types,
+                    {"boolean", "integer", "string"},
+                )
+
         result = tools["preparar_criacao_compromisso"].invoke(
             {
                 "tipo": "conta a pagar",
-                "descricao": "Assinatura",
-                "valor": "89,90",
-                "vencimento": timezone.localdate().isoformat(),
-                "categoria": "Outros",
+                "descricao": "Internet",
+                "valor": 89.9,
+                "vencimento": timezone.localdate().strftime("%d/%m/%Y"),
+                "categoria": "servicos",
+                "ocorrencias": "1",
+                "sem_data_final": "false",
             }
         )
 
         self.assertEqual(result["status"], "aguardando_confirmacao")
-        self.assertFalse(Payable.objects.filter(description="Assinatura").exists())
+        self.assertFalse(Payable.objects.filter(description="Internet").exists())
         action = PendingAction.objects.get(id=result["acao_id"])
+        self.assertEqual(action.payload["due_date"], timezone.localdate().isoformat())
+        self.assertEqual(action.payload["category"], "utilities")
+        self.assertFalse(action.payload["recurrence_indefinite"])
 
         response = self.resolve(action)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(Payable.objects.filter(description="Assinatura").exists())
+        self.assertTrue(Payable.objects.filter(description="Internet").exists())
         self.assertEqual(response.data["status"], PendingAction.Status.CONFIRMED)
         second_response = self.resolve(action)
         self.assertEqual(second_response.status_code, 200)
-        self.assertEqual(Payable.objects.filter(description="Assinatura").count(), 1)
+        self.assertEqual(Payable.objects.filter(description="Internet").count(), 1)
 
     def test_creation_is_supported_for_every_requested_entity(self):
         today = timezone.localdate().isoformat()
@@ -810,6 +932,33 @@ class FinancialToolsTests(APITestCase):
                 for item in activities["atividades"]
             )
         )
+
+    def test_numeric_tool_arguments_allow_numbers_returned_as_strings(self):
+        tools = {item.name: item for item in build_financial_tools(self.organization)}
+        numeric_arguments = {
+            "consultar_compromissos": "dias",
+            "consultar_projecao_de_caixa": "dias",
+            "consultar_lancamentos_recentes": "limite",
+            "consultar_clientes_e_fornecedores": "limite",
+            "consultar_atividades_por_contato": "limite",
+        }
+
+        for tool_name, argument_name in numeric_arguments.items():
+            with self.subTest(tool=tool_name, argument=argument_name):
+                argument_schema = tools[
+                    tool_name
+                ].args_schema.model_json_schema()["properties"][argument_name]
+                allowed_types = {
+                    option.get("type") for option in argument_schema.get("anyOf", [])
+                }
+                self.assertEqual(allowed_types, {"integer", "string"})
+
+        contacts = tools["consultar_clientes_e_fornecedores"].invoke(
+            {"tipo": "clientes", "busca": "", "limite": "10"}
+        )
+
+        self.assertEqual(contacts["quantidade_clientes"], 1)
+        self.assertEqual(contacts["clientes"][0]["nome"], self.customer.name)
 
     def test_recent_movements_include_customer_and_supplier(self):
         tools = {item.name: item for item in build_financial_tools(self.organization)}
