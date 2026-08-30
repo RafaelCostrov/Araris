@@ -1,0 +1,122 @@
+.detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  overflow-y: auto;
+  place-items: center;
+  padding: 24px;
+  background: rgb(3 19 40 / 48%);
+  backdrop-filter: blur(2px);
+}
+
+.detail-modal {
+  width: min(520px, 100%);
+  padding: 25px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgb(10 33 61 / 24%);
+}
+
+header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+h2 {
+  margin: 0;
+  color: #173252;
+  font-size: 22px;
+  letter-spacing: -0.035em;
+}
+
+header p {
+  margin: 5px 0 0;
+  color: #8595a8;
+  font-size: 12px;
+}
+
+header button {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border: 0;
+  border-radius: 10px;
+  color: #73859a;
+  background: #f3f6f9;
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+}
+
+.amount-card {
+  margin-top: 22px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f4f6f8;
+}
+
+.amount-card span,
+.category-detail span,
+dt {
+  color: #7e8fa3;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.amount-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #15845b;
+  font-size: 23px;
+  letter-spacing: -0.035em;
+}
+
+.amount-card .amount-card__value--expense {
+  color: #c44755;
+}
+
+.category-detail {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 20px;
+}
+
+.category-detail strong {
+  display: block;
+  margin-top: 3px;
+  color: #243e5e;
+  font-size: 15px;
+}
+
+dl {
+  display: grid;
+  gap: 15px;
+  margin: 21px 0 0;
+}
+
+dl > div {
+  padding-top: 14px;
+  border-top: 1px solid #edf1f5;
+}
+
+dd {
+  margin: 4px 0 0;
+  color: #2d4664;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 560px) {
+  .detail-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .detail-modal {
+    border-radius: 24px 24px 0 0;
+  }
+}

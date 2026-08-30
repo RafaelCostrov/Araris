@@ -1,0 +1,57 @@
+<div class="detail-backdrop" (click)="closed.emit()">
+  <section
+    class="detail-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="movement-detail-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header>
+      <div>
+        <h2 id="movement-detail-title">{{ movement.description }}</h2>
+        <p>{{ movement.occurred_on | date: 'dd/MM/yyyy' }}</p>
+      </div>
+      <button type="button" aria-label="Fechar detalhes" (click)="closed.emit()">×</button>
+    </header>
+
+    <div class="amount-card">
+      <span>Valor</span>
+      <strong [class.amount-card__value--expense]="movement.type === 'expense'">
+        {{ movement.type === 'revenue' ? '+' : '−' }} {{ movement.amount | currency: 'BRL' }}
+      </strong>
+    </div>
+
+    <div class="category-detail">
+      <app-category-icon [category]="movement.category" [size]="22" [withBackground]="true" />
+      <div>
+        <span>Categoria</span>
+        <strong>{{ movement.category_label }}</strong>
+      </div>
+    </div>
+
+    <dl>
+      <div>
+        <dt>Tipo de lançamento</dt>
+        <dd>{{ movement.is_recurring ? movement.recurrence_label : 'Lançamento simples' }}</dd>
+      </div>
+      <div>
+        <dt>{{ movement.type === 'revenue' ? 'Cliente' : 'Fornecedor' }}</dt>
+        <dd>
+          {{
+            movement.type === 'revenue'
+              ? movement.customer_name || 'Outros (sem vínculo)'
+              : movement.supplier_name || 'Outros (sem vínculo)'
+          }}
+        </dd>
+      </div>
+      <div>
+        <dt>Forma de pagamento</dt>
+        <dd>{{ movement.payment_method_label || 'Não informada' }}</dd>
+      </div>
+      <div>
+        <dt>Observações</dt>
+        <dd>{{ movement.notes || 'Nenhuma observação adicional.' }}</dd>
+      </div>
+    </dl>
+  </section>
+</div>

@@ -1,0 +1,452 @@
+<header class="page-header">
+  <div>
+    <span class="eyebrow">Administração financeira</span>
+    <h1>Movimentações</h1>
+    <p>Cadastre, edite e acompanhe as entradas e saídas da empresa.</p>
+  </div>
+  <button type="button" class="primary-button" (click)="openCreate()">
+    <span aria-hidden="true">+</span> Nova movimentação
+  </button>
+</header>
+
+<div *ngIf="successMessage" class="feedback feedback--success" role="status">
+  <span class="feedback__icon">✓</span>
+  <div>
+    <strong>Tudo certo</strong><span>{{ successMessage }}</span>
+  </div>
+  <button type="button" aria-label="Fechar mensagem" (click)="successMessage = ''">×</button>
+</div>
+
+<div *ngIf="errorMessage" class="feedback feedback--error" role="alert">
+  <span class="feedback__icon">!</span>
+  <div>
+    <strong>Algo não saiu como esperado</strong><span>{{ errorMessage }}</span>
+  </div>
+  <button type="button" aria-label="Fechar mensagem" (click)="errorMessage = ''">×</button>
+</div>
+
+<section class="totals-row" aria-label="Totais do período">
+  <article>
+    <span>Entradas</span>
+    <strong class="positive">{{ totalRevenue | currency: 'BRL' }}</strong>
+  </article>
+  <article>
+    <span>Saídas</span>
+    <strong class="negative">{{ totalExpense | currency: 'BRL' }}</strong>
+  </article>
+  <article>
+    <span>Resultado</span>
+    <strong [class.negative]="totalRevenue - totalExpense < 0">
+      {{ totalRevenue - totalExpense | currency: 'BRL' }}
+    </strong>
+  </article>
+</section>
+
+<section class="list-panel">
+  <div class="toolbar">
+    <label class="search-field">
+      <span aria-hidden="true">⌕</span>
+      <input
+        type="search"
+        name="search"
+        placeholder="Buscar por descrição"
+        [(ngModel)]="searchTerm"
+      />
+    </label>
+
+    <div class="toolbar__filters">
+      <div class="custom-filter custom-filter--type">
+        <span class="filter-label">Tipo</span>
+        <button
+          type="button"
+          class="custom-filter__trigger"
+          (click)="toggleFilterDropdown('type')"
+          [attr.aria-expanded]="openFilterDropdown === 'type'"
+          aria-haspopup="listbox"
+        >
+          <span>{{ typeFilterLabel }}</span>
+          <span class="custom-filter__chevron" aria-hidden="true">⌄</span>
+        </button>
+
+        <div *ngIf="openFilterDropdown === 'type'" class="custom-filter__panel" role="listbox">
+          <button
+            *ngFor="let option of typeFilterOptions"
+            type="button"
+            class="custom-filter__option"
+            [class.custom-filter__option--selected]="typeFilter === option.value"
+            (click)="selectTypeFilter(option.value)"
+          >
+            <span class="selection-mark">{{ typeFilter === option.value ? '✓' : '' }}</span>
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
+      <div class="custom-filter custom-filter--category">
+        <span class="filter-label">Categoria</span>
+        <button
+          type="button"
+          class="custom-filter__trigger"
+          (click)="toggleFilterDropdown('category')"
+          [attr.aria-expanded]="openFilterDropdown === 'category'"
+          aria-haspopup="listbox"
+        >
+          <span>{{ categoryFilterLabel }}</span>
+          <span class="custom-filter__chevron" aria-hidden="true">⌄</span>
+        </button>
+
+        <div
+          *ngIf="openFilterDropdown === 'category'"
+          class="custom-filter__panel custom-filter__panel--categories"
+          role="listbox"
+          aria-multiselectable="true"
+        >
+          <div class="custom-filter__panel-header">
+            <strong>Selecionar categorias</strong>
+            <button type="button" (click)="clearCategoryFilter()">Limpar</button>
+          </div>
+          <button
+            *ngFor="let category of filterCategories"
+            type="button"
+            class="custom-filter__option custom-filter__category-option"
+            [class.custom-filter__option--selected]="isCategorySelected(category.value)"
+            [attr.aria-selected]="isCategorySelected(category.value)"
+            (click)="toggleCategoryFilter(category.value)"
+          >
+            <span class="selection-mark">{{ isCategorySelected(category.value) ? '✓' : '' }}</span>
+            <app-category-icon [category]="category.value" [size]="16" />
+            <span>{{ category.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="value-filter">
+        <span class="filter-label">Valor (R$)</span>
+        <div class="value-filter__inputs">
+          <input
+            type="number"
+            name="minimumAmount"
+            min="0"
+            step="0.01"
+            placeholder="Mín."
+            aria-label="Valor mínimo"
+            [(ngModel)]="minimumAmount"
+          />
+          <span>até</span>
+          <input
+            type="number"
+            name="maximumAmount"
+            min="0"
+            step="0.01"
+            placeholder="Máx."
+            aria-label="Valor máximo"
+            [(ngModel)]="maximumAmount"
+          />
+        </div>
+      </div>
+
+      <div class="month-picker">
+        <button
+          type="button"
+          class="month-picker__trigger"
+          (click)="toggleMonthPicker()"
+          [disabled]="loading"
+          [attr.aria-expanded]="isMonthPickerOpen"
+          aria-haspopup="dialog"
+          aria-label="Escolher mês"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Zm13 8H4v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8ZM5 6a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1H5Z"
+            />
+          </svg>
+          <span>{{ shortMonthLabel() }}</span>
+        </button>
+
+        <div
+          *ngIf="isMonthPickerOpen"
+          class="month-picker__panel"
+          role="dialog"
+          aria-label="Escolher período"
+        >
+          <div class="month-picker__header">
+            <button
+              type="button"
+              class="month-picker__year-button"
+              (click)="changeVisibleYear(-1)"
+              aria-label="Ano anterior"
+            >
+              &lt;
+            </button>
+            <strong>{{ visibleYear }}</strong>
+            <button
+              type="button"
+              class="month-picker__year-button"
+              (click)="changeVisibleYear(1)"
+              aria-label="Próximo ano"
+            >
+              &gt;
+            </button>
+          </div>
+
+          <div class="month-picker__grid">
+            <button
+              *ngFor="let month of months; let index = index"
+              type="button"
+              class="month-picker__month"
+              [class.month-picker__month--selected]="isMonthSelected(index)"
+              (click)="selectMonth(index)"
+            >
+              {{ month }}
+            </button>
+          </div>
+
+          <button type="button" class="month-picker__current" (click)="selectCurrentMonth()">
+            Voltar para o mês atual
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-state" role="status">
+    <span class="spinner"></span>
+    <strong>Carregando movimentações...</strong>
+    <small>Consultando a API Spring</small>
+  </div>
+
+  <div *ngIf="!loading && filteredMovements.length === 0" class="empty-state">
+    <span class="empty-state__icon">↕</span>
+    <strong>{{
+      movements.length === 0 ? 'Nenhuma movimentação neste período' : 'Nenhum resultado encontrado'
+    }}</strong>
+    <p>
+      {{
+        movements.length === 0
+          ? 'Comece cadastrando uma entrada ou saída para compor o seu fluxo financeiro.'
+          : 'Altere os filtros ou o texto pesquisado para tentar novamente.'
+      }}
+    </p>
+    <button *ngIf="movements.length === 0" type="button" (click)="openCreate()">
+      Cadastrar primeira movimentação
+    </button>
+  </div>
+
+  <div *ngIf="!loading && filteredMovements.length > 0" class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Movimentação</th>
+          <th>Data</th>
+          <th>Categoria</th>
+          <th>Pagamento</th>
+          <th class="align-right">Valor</th>
+          <th><span class="sr-only">Ações</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let movement of filteredMovements"
+          tabindex="0"
+          (click)="openMovementDetails(movement)"
+          (keydown.enter)="openMovementDetails(movement)"
+        >
+          <td>
+            <div class="movement-title">
+              <app-category-icon
+                [category]="movement.category"
+                [size]="18"
+                [withBackground]="true"
+              />
+              <div>
+                <strong>{{ movement.description }}</strong>
+                <small>{{ movement.type === 'revenue' ? 'Entrada' : 'Saída' }}</small>
+              </div>
+            </div>
+          </td>
+          <td>{{ movement.occurred_on | date: 'dd/MM/yyyy' }}</td>
+          <td>
+            <span class="category-badge">{{ movement.category_label }}</span>
+          </td>
+          <td>{{ movement.payment_method_label || 'Não informado' }}</td>
+          <td class="align-right value" [class.negative]="movement.type === 'expense'">
+            {{ movement.type === 'revenue' ? '+' : '−' }} {{ movement.amount | currency: 'BRL' }}
+          </td>
+          <td>
+            <div class="row-actions">
+              <button
+                type="button"
+                title="Editar"
+                (click)="$event.stopPropagation(); openEdit(movement)"
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                class="delete-button"
+                title="Excluir"
+                [disabled]="deletingId === movement.id"
+                (click)="$event.stopPropagation(); deleteMovement(movement)"
+              >
+                {{ deletingId === movement.id ? 'Excluindo...' : 'Excluir' }}
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<app-movement-detail-modal
+  *ngIf="selectedMovement as movement"
+  [movement]="movement"
+  (closed)="selectedMovement = null"
+/>
+
+<div *ngIf="formOpen" class="drawer-backdrop" (click)="closeForm()"></div>
+
+<aside *ngIf="formOpen" class="form-drawer" aria-label="Formulário de movimentação">
+  <div class="drawer-header">
+    <div>
+      <span class="eyebrow">{{ editingMovement ? 'Editar registro' : 'Novo registro' }}</span>
+      <h2>{{ editingMovement ? 'Editar movimentação' : 'Cadastrar movimentação' }}</h2>
+      <p>Preencha os dados abaixo para atualizar o fluxo financeiro.</p>
+    </div>
+    <button type="button" aria-label="Fechar formulário" [disabled]="saving" (click)="closeForm()">
+      ×
+    </button>
+  </div>
+
+  <form #movementForm="ngForm" (ngSubmit)="saveMovement(movementForm)" novalidate>
+    <div class="type-selector">
+      <label [class.active]="formModel.type === 'revenue'">
+        <input
+          type="radio"
+          name="movementType"
+          value="revenue"
+          [(ngModel)]="formModel.type"
+          [disabled]="!!editingMovement"
+          (change)="onTypeChange()"
+        />
+        <span class="movement-icon movement-icon--revenue">↗</span>
+        <span><strong>Entrada</strong><small>Valor recebido</small></span>
+      </label>
+      <label [class.active]="formModel.type === 'expense'">
+        <input
+          type="radio"
+          name="movementType"
+          value="expense"
+          [(ngModel)]="formModel.type"
+          [disabled]="!!editingMovement"
+          (change)="onTypeChange()"
+        />
+        <span class="movement-icon movement-icon--expense">↘</span>
+        <span><strong>Saída</strong><small>Valor pago</small></span>
+      </label>
+    </div>
+
+    <label class="field" for="description">
+      <span>Descrição</span>
+      <input
+        id="description"
+        name="description"
+        type="text"
+        maxlength="255"
+        placeholder="Ex.: Venda de produtos"
+        required
+        [(ngModel)]="formModel.description"
+        #description="ngModel"
+      />
+      <small *ngIf="description.invalid && description.touched">Informe uma descrição.</small>
+    </label>
+
+    <div class="field-grid">
+      <label class="field" for="amount">
+        <span>Valor</span>
+        <div class="money-input" [class.invalid]="amount.invalid && amount.touched">
+          <span>R$</span>
+          <input
+            id="amount"
+            name="amount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            placeholder="0,00"
+            required
+            [(ngModel)]="formModel.amount"
+            #amount="ngModel"
+          />
+        </div>
+        <small *ngIf="amount.invalid && amount.touched">Informe um valor maior que zero.</small>
+      </label>
+
+      <label class="field" for="occurredOn">
+        <span>Data</span>
+        <input
+          id="occurredOn"
+          name="occurredOn"
+          type="date"
+          required
+          [(ngModel)]="formModel.occurred_on"
+          #occurredOn="ngModel"
+        />
+        <small *ngIf="occurredOn.invalid && occurredOn.touched">Informe a data.</small>
+      </label>
+    </div>
+
+    <label class="field" for="category">
+      <span>Categoria</span>
+      <select
+        id="category"
+        name="category"
+        required
+        [(ngModel)]="formModel.category"
+        #category="ngModel"
+      >
+        <option value="" disabled>Selecione uma categoria</option>
+        <option *ngFor="let option of categories" [value]="option.value">{{ option.label }}</option>
+      </select>
+      <small *ngIf="category.invalid && category.touched">Selecione uma categoria.</small>
+    </label>
+
+    <label class="field" for="paymentMethod">
+      <span>Forma de pagamento</span>
+      <select
+        id="paymentMethod"
+        name="paymentMethod"
+        required
+        [(ngModel)]="formModel.payment_method"
+        #paymentMethod="ngModel"
+      >
+        <option *ngFor="let option of paymentMethods" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+      <small *ngIf="paymentMethod.invalid && paymentMethod.touched">
+        Selecione uma forma de pagamento.
+      </small>
+    </label>
+
+    <label class="field" for="notes">
+      <span>Observações <em>opcional</em></span>
+      <textarea
+        id="notes"
+        name="notes"
+        rows="3"
+        placeholder="Adicione informações complementares"
+        [(ngModel)]="formModel.notes"
+      ></textarea>
+    </label>
+
+    <div class="drawer-actions">
+      <button type="button" class="secondary-button" [disabled]="saving" (click)="closeForm()">
+        Cancelar
+      </button>
+      <button type="submit" class="primary-button" [disabled]="saving">
+        <span *ngIf="saving" class="spinner spinner--button"></span>
+        {{ saving ? 'Salvando...' : editingMovement ? 'Salvar alterações' : 'Cadastrar' }}
+      </button>
+    </div>
+  </form>
+</aside>

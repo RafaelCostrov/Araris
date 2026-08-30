@@ -70,6 +70,14 @@ Esses itens permanecem no roadmap e não devem ser apresentados como recursos di
 
 O backend é um monólito modular separado por domínio. O código está dividido em `araris-front`, para o aplicativo, e `araris-back`, para a API e as regras de negócio.
 
+### Implementação acadêmica em Spring Boot
+
+O diretório `araris-spring` contém uma API paralela criada exclusivamente para atender à atividade acadêmica de Spring Boot. Ela demonstra autenticação, autorização, persistência, CRUD financeiro, Swagger, Thymeleaf e testes, mas **não substitui o Django e não representa um plano de migração do produto**. Para a demonstração, ambos acessam as mesmas tabelas de negócio no PostgreSQL; as migrations dessas tabelas continuam pertencendo ao Django. Consulte a [documentação da API Spring](araris-spring/README.md).
+
+### Implementação acadêmica em Angular
+
+O diretório `araris-angular` contém o painel administrativo exigido pela Parte 3 da mesma atividade. Ele apresenta login, resumo financeiro e CRUD de movimentações consumindo exclusivamente a API Spring, com HttpClient, rotas, guards, formulários com `[(ngModel)]`, data binding e diretivas estruturais. Assim como o módulo Spring, **esse painel é um recorte acadêmico e não representa a adoção do Angular no roadmap do produto**. Consulte a [documentação do painel Angular](araris-angular/README.md).
+
 ## Configuração local
 
 ### Backend

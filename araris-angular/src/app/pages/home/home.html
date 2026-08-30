@@ -1,0 +1,225 @@
+<header class="page-header">
+  <div class="organization-greeting">
+    <p>Olá, {{ authService.userName().split(' ')[0] }}</p>
+    <div class="organization-line">
+      <span class="organization-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M10 12h4" />
+          <path d="M10 8h4" />
+          <path d="M14 21v-3a2 2 0 0 0-4 0v3" />
+          <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" />
+          <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+        </svg>
+      </span>
+      <h1>{{ authService.organizationName() }}</h1>
+    </div>
+  </div>
+
+  <div class="month-filter">
+    <div class="month-picker">
+      <button
+        type="button"
+        class="month-picker__trigger"
+        (click)="toggleMonthPicker()"
+        [disabled]="loading"
+        [attr.aria-expanded]="isMonthPickerOpen"
+        aria-haspopup="dialog"
+        aria-label="Escolher mês"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Zm13 8H4v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8ZM5 6a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1H5Z"
+          />
+        </svg>
+        <span>{{ shortMonthLabel() }}</span>
+      </button>
+
+      <div
+        *ngIf="isMonthPickerOpen"
+        class="month-picker__panel"
+        role="dialog"
+        aria-label="Escolher período"
+      >
+        <div class="month-picker__header">
+          <button
+            type="button"
+            class="month-picker__year-button"
+            (click)="changeVisibleYear(-1)"
+            aria-label="Ano anterior"
+          >
+            &lt;
+          </button>
+          <strong>{{ visibleYear }}</strong>
+          <button
+            type="button"
+            class="month-picker__year-button"
+            (click)="changeVisibleYear(1)"
+            aria-label="Próximo ano"
+          >
+            &gt;
+          </button>
+        </div>
+
+        <div class="month-picker__grid">
+          <button
+            *ngFor="let month of months; let index = index"
+            type="button"
+            class="month-picker__month"
+            [class.month-picker__month--selected]="isMonthSelected(index)"
+            (click)="selectMonth(index)"
+          >
+            {{ month }}
+          </button>
+        </div>
+
+        <button type="button" class="month-picker__current" (click)="selectCurrentMonth()">
+          Voltar para o mês atual
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div *ngIf="errorMessage" class="feedback feedback--error" role="alert">
+  <div>
+    <strong>Não foi possível atualizar o painel</strong>
+    <span>{{ errorMessage }}</span>
+  </div>
+  <button type="button" (click)="loadSummary()">Tentar novamente</button>
+</div>
+
+<section *ngIf="loading" class="summary-grid" aria-label="Carregando indicadores">
+  <div *ngFor="let card of skeletonCards" class="summary-card summary-card--skeleton">
+    <span></span><strong></strong><small></small>
+  </div>
+</section>
+
+<ng-container *ngIf="!loading && summary as dashboard">
+  <section class="summary-grid" aria-label="Resumo financeiro">
+    <article class="summary-card summary-card--balance">
+      <div class="summary-card__top">
+        <span class="card-label">Saldo atual</span>
+        <span class="card-icon card-icon--blue">$</span>
+      </div>
+      <strong>{{ dashboard.totals.closing_balance | currency: 'BRL' }}</strong>
+      <small>Saldo de abertura: {{ dashboard.totals.opening_balance | currency: 'BRL' }}</small>
+    </article>
+
+    <article class="summary-card">
+      <div class="summary-card__top">
+        <span class="card-label">Entradas no mês</span>
+        <span class="card-icon card-icon--green">↗</span>
+      </div>
+      <strong>{{ dashboard.totals.revenue | currency: 'BRL' }}</strong>
+      <small class="positive">Receitas realizadas</small>
+    </article>
+
+    <article class="summary-card">
+      <div class="summary-card__top">
+        <span class="card-label">Saídas no mês</span>
+        <span class="card-icon card-icon--red">↘</span>
+      </div>
+      <strong>{{ dashboard.totals.expense | currency: 'BRL' }}</strong>
+      <small class="negative">Despesas realizadas</small>
+    </article>
+
+    <article class="summary-card">
+      <div class="summary-card__top">
+        <span class="card-label">Resultado mensal</span>
+        <span
+          class="card-icon"
+          [class.card-icon--green]="dashboard.totals.monthly_balance >= 0"
+          [class.card-icon--red]="dashboard.totals.monthly_balance < 0"
+          >≈</span
+        >
+      </div>
+      <strong [class.negative-value]="dashboard.totals.monthly_balance < 0">
+        {{ dashboard.totals.monthly_balance | currency: 'BRL' }}
+      </strong>
+      <small>{{
+        dashboard.totals.monthly_balance >= 0 ? 'Resultado positivo' : 'Atenção ao caixa'
+      }}</small>
+    </article>
+  </section>
+
+  <section class="dashboard-grid">
+    <article class="panel activity-panel">
+      <div class="panel__header">
+        <div>
+          <span class="eyebrow">Fluxo recente</span>
+          <h2>Últimas movimentações</h2>
+        </div>
+        <a routerLink="/admin/movimentacoes">Ver todas <span aria-hidden="true">→</span></a>
+      </div>
+
+      <div *ngIf="dashboard.recent_activity.length === 0" class="empty-state">
+        <span class="empty-state__icon">↕</span>
+        <strong>Nenhuma movimentação no período</strong>
+        <p>Cadastre a primeira entrada ou saída para acompanhar seu fluxo financeiro.</p>
+        <a routerLink="/admin/movimentacoes">Cadastrar movimentação</a>
+      </div>
+
+      <ul *ngIf="dashboard.recent_activity.length > 0" class="activity-list">
+        <li
+          *ngFor="let item of dashboard.recent_activity"
+          tabindex="0"
+          (click)="openMovementDetails(item)"
+          (keydown.enter)="openMovementDetails(item)"
+        >
+          <app-category-icon [category]="item.category" [size]="20" [withBackground]="true" />
+          <div class="activity-copy">
+            <strong>{{ item.description }}</strong>
+            <small>{{ item.category_label }} · {{ item.date | date: 'dd/MM/yyyy' }}</small>
+          </div>
+          <span class="activity-value" [class.activity-value--expense]="item.type === 'expense'">
+            {{ item.type === 'revenue' ? '+' : '−' }} {{ item.amount | currency: 'BRL' }}
+          </span>
+        </li>
+      </ul>
+    </article>
+
+    <aside class="panel health-panel">
+      <span class="eyebrow">Compromissos</span>
+      <h2>Saúde do caixa</h2>
+
+      <div class="health-balance">
+        <span>Saldo consolidado</span>
+        <strong>{{ dashboard.totals.balance | currency: 'BRL' }}</strong>
+      </div>
+
+      <div class="health-row">
+        <div>
+          <span class="dot dot--green"></span>
+          <span>A receber no período</span>
+        </div>
+        <strong>{{ dashboard.totals.receivables_due_in_period | currency: 'BRL' }}</strong>
+      </div>
+      <div class="health-row">
+        <div>
+          <span class="dot dot--orange"></span>
+          <span>A pagar no período</span>
+        </div>
+        <strong>{{ dashboard.totals.payables_due_in_period | currency: 'BRL' }}</strong>
+      </div>
+
+      <div class="health-alert" [class.health-alert--ok]="dashboard.counts.overdue_payables === 0">
+        <span>{{ dashboard.counts.overdue_payables === 0 ? '✓' : '×' }}</span>
+        <div>
+          <strong>
+            {{
+              dashboard.counts.overdue_payables === 0
+                ? 'Nenhuma conta atrasada'
+                : dashboard.counts.overdue_payables + ' conta(s) atrasada(s)'
+            }}
+          </strong>
+        </div>
+      </div>
+    </aside>
+  </section>
+</ng-container>
+
+<app-movement-detail-modal
+  *ngIf="selectedMovement as movement"
+  [movement]="movement"
+  (closed)="selectedMovement = null"
+/>

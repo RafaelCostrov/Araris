@@ -1,0 +1,54 @@
+<div class="admin-shell">
+  <button
+    type="button"
+    class="menu-button"
+    aria-label="Abrir menu"
+    [attr.aria-expanded]="menuOpen"
+    (click)="menuOpen = !menuOpen"
+  >
+    <span></span><span></span><span></span>
+  </button>
+
+  <aside class="sidebar" [class.sidebar--open]="menuOpen">
+    <a class="brand" routerLink="/home" (click)="closeMenu()">
+      <!-- <img class="brand__image brand__image--mascot" src="assets/images/araris_aceno.png" alt="Mascote Araris" /> -->
+      <img
+        class="brand__image brand__image--logo"
+        src="assets/images/logo_branco.png"
+        alt="Logo Araris"
+      />
+    </a>
+
+    <nav aria-label="Navegação principal">
+      <a routerLink="/home" routerLinkActive="active" (click)="closeMenu()">
+        <span class="nav-icon" aria-hidden="true">⌂</span>
+        Visão geral
+      </a>
+      <a routerLink="/admin/movimentacoes" routerLinkActive="active" (click)="closeMenu()">
+        <span class="nav-icon" aria-hidden="true">↕</span>
+        Movimentações
+      </a>
+    </nav>
+
+    <div class="sidebar__footer">
+      <div class="user-avatar">{{ authService.userName().charAt(0).toUpperCase() }}</div>
+      <div class="user-copy">
+        <strong>{{ authService.userName() }}</strong>
+        <small>{{ authService.session()?.user?.email }}</small>
+      </div>
+      <button type="button" class="logout-button" title="Sair" (click)="logout()">↪</button>
+    </div>
+  </aside>
+
+  <button
+    *ngIf="menuOpen"
+    type="button"
+    class="backdrop"
+    aria-label="Fechar menu"
+    (click)="closeMenu()"
+  ></button>
+
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>

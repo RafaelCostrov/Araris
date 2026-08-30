@@ -1,0 +1,84 @@
+<main class="login-page">
+  <section class="login-visual" aria-label="Apresentação do Araris">
+    <div class="visual-orb visual-orb--one"></div>
+    <div class="visual-orb visual-orb--two"></div>
+
+    <a class="brand" href="/login" aria-label="Araris">
+      <!-- <img class="brand__image brand__image--mascot" src="assets/images/araris_aceno.png" alt="Mascote Araris" /> -->
+      <img class="brand__image brand__image--logo" src="assets/images/logo_branco.png" alt="Logo Araris" />
+    </a>
+
+    <div class="visual-copy">
+      <span class="eyebrow">Gestão que trabalha com você</span>
+      <h1>Decisões mais claras para o seu negócio.</h1>
+      <p>Acompanhe suas finanças e mantenha as movimentações organizadas em um único painel.</p>
+
+      <div class="preview-card">
+        <div class="preview-card__header">
+          <span>Visão financeira</span>
+        </div>
+        <div class="preview-card__amount">R$ 24.580,00</div>
+        <div class="preview-card__caption">Saldo consolidado</div>
+        <div class="preview-chart" aria-hidden="true">
+          <span style="height: 32%"></span>
+          <span style="height: 48%"></span>
+          <span style="height: 42%"></span>
+          <span style="height: 68%"></span>
+          <span style="height: 61%"></span>
+          <span style="height: 88%"></span>
+          <span style="height: 76%"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="login-form-section">
+    <div class="form-card">
+      <a class="mobile-brand" href="/login" aria-label="Araris">
+        <img class="brand__image brand__image--mascot" src="assets/images/araris_aceno.png" alt="Mascote Araris" />
+        <img class="brand__image brand__image--logo" src="assets/images/logo_branco.png" alt="Logo Araris" />
+      </a>
+
+      <span class="form-eyebrow">Login</span>
+      <h2>Que bom ter você de volta!</h2>
+      <p class="form-intro">Entre com os seus dados</p>
+
+      <div *ngIf="errorMessage" class="alert alert--error" role="alert">
+        <span aria-hidden="true">!</span>
+        {{ errorMessage }}
+      </div>
+
+      <form #loginForm="ngForm" (ngSubmit)="submit(loginForm)" novalidate>
+        <label for="email">E-mail</label>
+        <div class="input-wrap" [class.input-wrap--invalid]="email.invalid && email.touched">
+          <span aria-hidden="true">&#64;</span>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="voce@empresa.com.br" required
+            email [(ngModel)]="credentials.email" #email="ngModel" />
+        </div>
+        <small *ngIf="email.invalid && email.touched" class="field-error">
+          Informe um e-mail válido.
+        </small>
+
+        <label for="password">Senha</label>
+        <div class="input-wrap" [class.input-wrap--invalid]="password.invalid && password.touched">
+          <span aria-hidden="true">●</span>
+          <input id="password" name="password" [type]="showPassword ? 'text' : 'password'"
+            autocomplete="current-password" placeholder="Digite sua senha" required [(ngModel)]="credentials.password"
+            #password="ngModel" />
+          <button type="button" class="password-toggle"
+            [attr.aria-label]="showPassword ? 'Ocultar senha' : 'Mostrar senha'" (click)="showPassword = !showPassword">
+            {{ showPassword ? 'Ocultar' : 'Mostrar' }}
+          </button>
+        </div>
+        <small *ngIf="password.invalid && password.touched" class="field-error">
+          Informe sua senha.
+        </small>
+
+        <button class="submit-button" type="submit" [disabled]="loading">
+          <span *ngIf="loading" class="spinner" aria-hidden="true"></span>
+          {{ loading ? 'Entrando...' : 'Entrar' }}
+        </button>
+      </form>
+    </div>
+  </section>
+</main>
