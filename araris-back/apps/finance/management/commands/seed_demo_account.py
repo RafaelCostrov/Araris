@@ -206,7 +206,7 @@ class Command(BaseCommand):
 
         for sequence, month in enumerate(months, start=1):
             due_date = date(2026, month, 1)
-            is_settled = month <= 8
+            is_settled = month <= 9
             payable = self._upsert(
                 Payable,
                 {
@@ -256,7 +256,7 @@ class Command(BaseCommand):
                 )
 
             care_due_date = date(2026, month, 5)
-            care_is_settled = month <= 8
+            care_is_settled = month <= 9
             receivable = self._upsert(
                 Receivable,
                 {
@@ -351,6 +351,15 @@ class Command(BaseCommand):
             ("Penteado para evento - Gabriela", "320.00", date(2026, 8, 7), "services", "Gabriela Alves", "pix"),
             ("Escova progressiva", "520.00", date(2026, 8, 8), "services", None, "debit_card"),
             ("Serviços do dia - Ana", "410.00", date(2026, 8, 9), "services", "Ana Carolina", "pix"),
+            ("Venda de kit home care - Fernanda", "420.00", date(2026, 9, 1), "sales", "Fernanda Lima", "pix"),
+            ("Corte e escova - Ana", "230.00", date(2026, 9, 2), "services", "Ana Carolina", "pix"),
+            ("Coloração completa - Beatriz", "510.00", date(2026, 9, 3), "services", "Beatriz Souza", "credit_card"),
+            ("Cronograma capilar - Elisa", "380.00", date(2026, 9, 5), "services", "Elisa Ferreira", "pix"),
+            ("Mechas e reconstrução - Camila", "760.00", date(2026, 9, 7), "services", "Camila Rocha", "credit_card"),
+            ("Penteado para casamento", "460.00", date(2026, 9, 9), "services", "Mariana Costa", "bank_transfer"),
+            ("Progressiva premium - Gabriela", "620.00", date(2026, 9, 11), "services", "Gabriela Alves", "debit_card"),
+            ("Atendimentos do fim de semana", "540.00", date(2026, 9, 13), "services", None, "cash"),
+            ("Venda de shampoo e finalizador", "330.00", date(2026, 9, 14), "sales", "Isabela Nunes", "debit_card"),
         ]
         expenses = [
             ("Reposição de produtos profissionais", "610.00", date(2026, 3, 4), "supplies", "Bella Cosméticos Distribuidora", "bank_transfer"),
@@ -385,6 +394,13 @@ class Command(BaseCommand):
             ("Entregas para clientes", "95.00", date(2026, 8, 6), "transportation", "Motoboy Express", "pix"),
             ("Tarifas das maquininhas", "128.00", date(2026, 8, 7), "bank_fees", None, "bank_transfer"),
             ("Materiais de limpeza", "115.00", date(2026, 8, 8), "supplies", "Atacado Beauty Pro", "debit_card"),
+            ("Produtos profissionais", "760.00", date(2026, 9, 2), "supplies", "Bella Cosméticos Distribuidora", "bank_transfer"),
+            ("Tinturas para coloração", "490.00", date(2026, 9, 4), "supplies", "Fios & Cores Profissional", "pix"),
+            ("Materiais descartáveis", "145.00", date(2026, 9, 6), "supplies", "Atacado Beauty Pro", "debit_card"),
+            ("Anúncios de primavera", "230.00", date(2026, 9, 8), "marketing", "Meta Ads", "credit_card"),
+            ("Transporte e entregas", "105.00", date(2026, 9, 10), "transportation", "Motoboy Express", "pix"),
+            ("Tarifas das maquininhas", "132.00", date(2026, 9, 13), "bank_fees", None, "bank_transfer"),
+            ("Manutenção de equipamentos", "280.00", date(2026, 9, 14), "other", None, "pix"),
         ]
 
         for description, amount, occurred_on, category, customer, method in revenues:
@@ -441,6 +457,11 @@ class Command(BaseCommand):
             ("Internet e telefone", "140.00", date(2026, 8, 20), "utilities", "Conecta Telecom"),
             ("DAS de agosto", "82.60", date(2026, 8, 25), "taxes", None),
             ("Campanha de primavera", "360.00", date(2026, 8, 29), "marketing", "Meta Ads"),
+            ("Manutenção do ar-condicionado", "420.00", date(2026, 9, 15), "other", None),
+            ("Reposição de produtos profissionais", "780.00", date(2026, 9, 18), "supplies", "Bella Cosméticos Distribuidora"),
+            ("Internet e telefone de setembro", "145.00", date(2026, 9, 20), "utilities", "Conecta Telecom"),
+            ("DAS de setembro", "82.60", date(2026, 9, 25), "taxes", None),
+            ("Campanha promocional de primavera", "390.00", date(2026, 9, 28), "marketing", "Meta Ads"),
         ]
         receivables = [
             ("Pacote noiva - parcela final", "950.00", date(2026, 8, 14), "services", "Mariana Costa"),
@@ -448,6 +469,10 @@ class Command(BaseCommand):
             ("Pacote de mechas - Isabela", "680.00", date(2026, 8, 22), "services", "Isabela Nunes"),
             ("Venda de kits home care", "540.00", date(2026, 8, 28), "sales", None),
             ("Produção para evento corporativo", "1200.00", date(2026, 9, 7), "services", "Gabriela Alves"),
+            ("Pacote de coloração - Mariana", "560.00", date(2026, 9, 15), "services", "Mariana Costa"),
+            ("Pacote de mechas - Isabela", "720.00", date(2026, 9, 16), "services", "Isabela Nunes"),
+            ("Dia da noiva - parcela final", "1400.00", date(2026, 9, 22), "services", "Mariana Costa"),
+            ("Venda de kits home care - setembro", "620.00", date(2026, 9, 27), "sales", None),
         ]
 
         for description, amount, due_date, category, supplier in payables:
