@@ -4,7 +4,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from apps.finance.models import (
@@ -22,6 +22,139 @@ class FinanceDomainError(Exception):
 
 def money(value):
     return f"{Decimal(value or 0):.2f}"
+
+
+def _aggregate_realized_totals(queryset, *, month_start, next_month):
+    """Calcula os valores anteriores e do mês em uma consulta por tabela."""
+    return queryset.filter(occurred_on__lt=next_month).aggregate(
+        previous=Sum("amount", filter=Q(occurred_on__lt=month_start), default=0),
+        monthly=Sum("amount", filter=Q(occurred_on__gte=month_start), default=0),
+    )
+
+
+def _aggregate_pending_totals(queryset, *, month_start, next_month, today):
+    """Soma e conta pendências; vencidos e vencimentos de hoje são globais."""
+    period = Q(due_date__gte=month_start, due_date__lt=next_month)
+    overdue = Q(due_date__lt=today)
+    due_today = Q(due_date=today)
+    return queryset.filter(status=queryset.model.Status.PENDING).aggregate(
+        period_total=Sum("amount", filter=period, default=0),
+        period_count=Count("id", filter=period),
+        overdue_total=Sum("amount", filter=overdue, default=0),
+        overdue_count=Count("id", filter=overdue),
+        due_today_total=Sum("amount", filter=due_today, default=0),
+        due_today_count=Count("id", filter=due_today),
+    )
+
+
+def _recent_financial_activity(*, revenues, expenses, month_start, next_month):
+    activity = []
+    for movement_type, queryset, source_field, contact_field in (
+        ("revenue", revenues, "source_receivable", "customer"),
+        ("expense", expenses, "source_payable", "supplier"),
+    ):
+        movements = (
+            queryset.filter(occurred_on__gte=month_start, occurred_on__lt=next_month)
+            .select_related(source_field, contact_field)
+            .order_by("-occurred_on", "-created_at")[:8]
+        )
+        for movement in movements:
+            source = getattr(movement, source_field)
+            contact = getattr(movement, contact_field)
+            is_recurring = bool(source and source.recurrence != RecurrenceFrequency.NONE)
+            activity.append(
+                {
+                    "id": movement.id,
+                    "type": movement_type,
+                    "description": movement.description,
+                    "amount": money(movement.amount),
+                    "date": movement.occurred_on,
+                    "category": movement.category,
+                    "category_label": movement.get_category_display(),
+                    f"{contact_field}_id": getattr(movement, f"{contact_field}_id"),
+                    f"{contact_field}_name": contact.name if contact else None,
+                    "payment_method": movement.payment_method,
+                    "payment_method_label": movement.get_payment_method_display(),
+                    "is_recurring": is_recurring,
+                    "recurrence": source.recurrence if is_recurring else "none",
+                    "recurrence_label": (
+                        source.get_recurrence_display()
+                        if is_recurring
+                        else "Lançamento simples"
+                    ),
+                    "source_commitment_id": source.id if source else None,
+                    "notes": movement.notes,
+                    "created_at": movement.created_at,
+                }
+            )
+    activity.sort(key=lambda item: (item["date"], item["created_at"]), reverse=True)
+    return activity[:8]
+
+
+def build_financial_summary(*, organization, month_start, next_month):
+    """Monta o resumo com quatro consultas de indicadores e duas de atividades.
+
+    A organização deve ter sido autorizada pelo chamador. A ampliação das
+    recorrências mantém suas consultas próprias, fora da contagem acima.
+    """
+    today = timezone.localdate()
+    for model in (Payable, Receivable):
+        ensure_indefinite_commitments(
+            model=model,
+            organization=organization,
+            through_date=next_month,
+        )
+
+    revenues = Revenue.objects.filter(organization=organization)
+    expenses = Expense.objects.filter(organization=organization)
+    revenue_totals = _aggregate_realized_totals(
+        revenues, month_start=month_start, next_month=next_month,
+    )
+    expense_totals = _aggregate_realized_totals(
+        expenses, month_start=month_start, next_month=next_month,
+    )
+    opening_balance = (
+        organization.initial_balance
+        + revenue_totals["previous"]
+        - expense_totals["previous"]
+    )
+    monthly_balance = revenue_totals["monthly"] - expense_totals["monthly"]
+    closing_balance = opening_balance + monthly_balance
+    totals = {
+        "revenue": revenue_totals["monthly"],
+        "expense": expense_totals["monthly"],
+        "monthly_balance": monthly_balance,
+        "opening_balance": opening_balance,
+        "closing_balance": closing_balance,
+        # O saldo acumulado até o fim do mês é o próprio saldo de fechamento.
+        "balance": closing_balance,
+    }
+    counts = {}
+    for name, model in (("payables", Payable), ("receivables", Receivable)):
+        pending = _aggregate_pending_totals(
+            model.objects.filter(organization=organization),
+            month_start=month_start,
+            next_month=next_month,
+            today=today,
+        )
+        totals[f"{name}_due_in_period"] = pending["period_total"]
+        totals[f"overdue_{name}"] = pending["overdue_total"]
+        totals[f"due_today_{name}"] = pending["due_today_total"]
+        counts[f"pending_{name}"] = pending["period_count"]
+        counts[f"overdue_{name}"] = pending["overdue_count"]
+        counts[f"due_today_{name}"] = pending["due_today_count"]
+
+    return {
+        "period": month_start,
+        "totals": {name: money(value) for name, value in totals.items()},
+        "counts": counts,
+        "recent_activity": _recent_financial_activity(
+            revenues=revenues,
+            expenses=expenses,
+            month_start=month_start,
+            next_month=next_month,
+        ),
+    }
 
 
 def add_months(value, months):

@@ -35,6 +35,7 @@ from apps.finance.services import (
     FinanceDomainError,
     add_months,
     build_cash_flow_forecast,
+    build_financial_summary,
     delete_movement_and_reopen_commitment,
     ensure_indefinite_commitments,
     settle_payable,
@@ -636,7 +637,6 @@ class FinancialSummaryView(APIView):
             request.user,
             request.query_params.get("organization_id"),
         )
-        today = timezone.localdate()
         bounds = month_bounds(request.query_params.get("month"))
         if bounds is None:
             return Response(
@@ -644,187 +644,12 @@ class FinancialSummaryView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         month_start, next_month = bounds
-
-        ensure_indefinite_commitments(
-            model=Payable,
-            organization=organization,
-            through_date=next_month,
-        )
-        ensure_indefinite_commitments(
-            model=Receivable,
-            organization=organization,
-            through_date=next_month,
-        )
-
-        revenues = Revenue.objects.filter(organization=organization)
-        expenses = Expense.objects.filter(organization=organization)
-        payables = Payable.objects.filter(organization=organization)
-        receivables = Receivable.objects.filter(organization=organization)
-
-        month_revenue = revenues.filter(
-            occurred_on__gte=month_start,
-            occurred_on__lt=next_month,
-        ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
-        month_expense = expenses.filter(
-            occurred_on__gte=month_start,
-            occurred_on__lt=next_month,
-        ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
-        all_revenue = revenues.filter(occurred_on__lt=next_month).aggregate(
-            total=Sum("amount")
-        )["total"] or Decimal("0")
-        all_expense = expenses.filter(occurred_on__lt=next_month).aggregate(
-            total=Sum("amount")
-        )["total"] or Decimal("0")
-        previous_revenue = revenues.filter(occurred_on__lt=month_start).aggregate(
-            total=Sum("amount")
-        )["total"] or Decimal("0")
-        previous_expense = expenses.filter(occurred_on__lt=month_start).aggregate(
-            total=Sum("amount")
-        )["total"] or Decimal("0")
-        opening_balance = (
-            organization.initial_balance + previous_revenue - previous_expense
-        )
-        closing_balance = opening_balance + month_revenue - month_expense
-        period_payables = payables.filter(
-            status=Payable.Status.PENDING,
-            due_date__gte=month_start,
-            due_date__lt=next_month,
-        )
-        period_receivables = receivables.filter(
-            status=Receivable.Status.PENDING,
-            due_date__gte=month_start,
-            due_date__lt=next_month,
-        )
-        overdue_payables = payables.filter(
-            status=Payable.Status.PENDING,
-            due_date__lt=today,
-        )
-        overdue_receivables = receivables.filter(
-            status=Receivable.Status.PENDING,
-            due_date__lt=today,
-        )
-        due_today_payables = payables.filter(
-            status=Payable.Status.PENDING,
-            due_date=today,
-        )
-        due_today_receivables = receivables.filter(
-            status=Receivable.Status.PENDING,
-            due_date=today,
-        )
-
-        activity = []
-        for revenue in revenues.filter(
-            occurred_on__gte=month_start,
-            occurred_on__lt=next_month,
-        ).select_related("source_receivable", "customer").order_by(
-            "-occurred_on",
-            "-created_at",
-        )[:8]:
-            source = revenue.source_receivable
-            is_recurring = bool(source and source.recurrence != "none")
-            activity.append(
-                {
-                    "id": revenue.id,
-                    "type": "revenue",
-                    "description": revenue.description,
-                    "amount": money(revenue.amount),
-                    "date": revenue.occurred_on,
-                    "category": revenue.category,
-                    "category_label": revenue.get_category_display(),
-                    "customer_id": revenue.customer_id,
-                    "customer_name": revenue.customer.name if revenue.customer else None,
-                    "payment_method": revenue.payment_method,
-                    "payment_method_label": revenue.get_payment_method_display(),
-                    "is_recurring": is_recurring,
-                    "recurrence": source.recurrence if is_recurring else "none",
-                    "recurrence_label": (
-                        source.get_recurrence_display()
-                        if is_recurring
-                        else "Lançamento simples"
-                    ),
-                    "source_commitment_id": source.id if source else None,
-                    "notes": revenue.notes,
-                    "created_at": revenue.created_at,
-                }
-            )
-        for expense in expenses.filter(
-            occurred_on__gte=month_start,
-            occurred_on__lt=next_month,
-        ).select_related("source_payable", "supplier").order_by(
-            "-occurred_on",
-            "-created_at",
-        )[:8]:
-            source = expense.source_payable
-            is_recurring = bool(source and source.recurrence != "none")
-            activity.append(
-                {
-                    "id": expense.id,
-                    "type": "expense",
-                    "description": expense.description,
-                    "amount": money(expense.amount),
-                    "date": expense.occurred_on,
-                    "category": expense.category,
-                    "category_label": expense.get_category_display(),
-                    "supplier_id": expense.supplier_id,
-                    "supplier_name": expense.supplier.name if expense.supplier else None,
-                    "payment_method": expense.payment_method,
-                    "payment_method_label": expense.get_payment_method_display(),
-                    "is_recurring": is_recurring,
-                    "recurrence": source.recurrence if is_recurring else "none",
-                    "recurrence_label": (
-                        source.get_recurrence_display()
-                        if is_recurring
-                        else "Lançamento simples"
-                    ),
-                    "source_commitment_id": source.id if source else None,
-                    "notes": expense.notes,
-                    "created_at": expense.created_at,
-                }
-            )
-        activity.sort(
-            key=lambda item: (item["date"], item["created_at"]),
-            reverse=True,
-        )
-
         return Response(
-            {
-                "period": month_start,
-                "totals": {
-                    "revenue": money(month_revenue),
-                    "expense": money(month_expense),
-                    "monthly_balance": money(month_revenue - month_expense),
-                    "opening_balance": money(opening_balance),
-                    "closing_balance": money(closing_balance),
-                    "balance": money(organization.initial_balance + all_revenue - all_expense),
-                    "payables_due_in_period": money(
-                        period_payables.aggregate(total=Sum("amount"))["total"]
-                    ),
-                    "receivables_due_in_period": money(
-                        period_receivables.aggregate(total=Sum("amount"))["total"]
-                    ),
-                    "overdue_payables": money(
-                        overdue_payables.aggregate(total=Sum("amount"))["total"]
-                    ),
-                    "overdue_receivables": money(
-                        overdue_receivables.aggregate(total=Sum("amount"))["total"]
-                    ),
-                    "due_today_payables": money(
-                        due_today_payables.aggregate(total=Sum("amount"))["total"]
-                    ),
-                    "due_today_receivables": money(
-                        due_today_receivables.aggregate(total=Sum("amount"))["total"]
-                    ),
-                },
-                "counts": {
-                    "pending_payables": period_payables.count(),
-                    "pending_receivables": period_receivables.count(),
-                    "overdue_payables": overdue_payables.count(),
-                    "overdue_receivables": overdue_receivables.count(),
-                    "due_today_payables": due_today_payables.count(),
-                    "due_today_receivables": due_today_receivables.count(),
-                },
-                "recent_activity": activity[:8],
-            }
+            build_financial_summary(
+                organization=organization,
+                month_start=month_start,
+                next_month=next_month,
+            )
         )
 
 

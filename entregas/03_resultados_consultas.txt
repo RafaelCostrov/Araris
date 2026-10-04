@@ -1,0 +1,291 @@
+ARARIS - EVIDÊNCIAS DA PARTE 2
+Captura: 2026-10-04T13:13:07-03:00
+Somente SELECT. Não foi realizado seed, atualização ou exclusão na origem.
+Observação de qualidade dos dados: foram identificadas 2 contas a pagar
+pendentes com despesas já vinculadas e nenhuma conta a receber pendente com
+receita vinculada. Essa inconsistência preexistente não foi corrigida nesta entrega.
+
+CONSULTA 1
+banco | versao_postgresql
+araris | 18.4
+Linhas retornadas: 1
+
+CONSULTA 2
+esquema | tabela
+public | accounts_user
+public | finance_customer
+public | finance_expense
+public | finance_payable
+public | finance_receivable
+public | finance_revenue
+public | finance_supplier
+public | notifications_alert
+public | organizations_membership
+public | organizations_organization
+Linhas retornadas: 10
+
+CONSULTA 3
+usuario | empresa | papel | situacao_vinculo
+Millena | Studio Millena | owner | active
+Linhas retornadas: 1
+
+CONSULTA 4
+entidade | registros
+Alertas | 0
+Clientes | 9
+Contas a pagar | 112
+Contas a receber | 46
+Despesas | 54
+Fornecedores | 9
+Receitas | 61
+Linhas retornadas: 7
+
+CONSULTA 5
+data | descricao | valor | cliente
+2026-09-14 | Venda de shampoo e finalizador | 330.00 | Isabela Nunes
+2026-09-13 | Atendimentos do fim de semana | 540.00 | Sem cliente vinculado
+2026-09-11 | Progressiva premium - Gabriela | 620.00 | Gabriela Alves
+2026-09-09 | Penteado para casamento | 460.00 | Mariana Costa
+2026-09-07 | Mechas e reconstrução - Camila | 760.00 | Camila Rocha
+2026-09-05 | Cronograma capilar - Elisa | 380.00 | Elisa Ferreira
+2026-09-05 | Plano mensal de cuidados capilares | 420.00 | Daniela Martins
+2026-09-03 | Coloração completa - Beatriz | 510.00 | Beatriz Souza
+2026-09-02 | Corte e escova - Ana | 230.00 | Ana Carolina
+2026-09-01 | Venda de kit home care - Fernanda | 420.00 | Fernanda Lima
+Linhas retornadas: 10
+
+CONSULTA 6
+data | descricao | valor | fornecedor
+2026-09-14 | Manutenção de equipamentos | 280.00 | Sem fornecedor vinculado
+2026-09-13 | Tarifas das maquininhas | 132.00 | Sem fornecedor vinculado
+2026-09-10 | Transporte e entregas | 105.00 | Motoboy Express
+2026-09-08 | Anúncios de primavera | 230.00 | Meta Ads
+2026-09-06 | Materiais descartáveis | 145.00 | Atacado Beauty Pro
+2026-09-04 | Tinturas para coloração | 490.00 | Fios & Cores Profissional
+2026-09-02 | Produtos profissionais | 760.00 | Bella Cosméticos Distribuidora
+2026-09-01 | Aluguel mensal do salão | 1800.00 | Imobiliária Central
+2026-08-10 | Tarifa de conta bancária | 150.00 | Sem fornecedor vinculado
+2026-08-10 | Luz | 135.00 | Energia Paulista
+Linhas retornadas: 10
+
+CONSULTA 7
+mes | entradas | saidas | resultado_do_mes
+2026-03 | 2650.00 | 3370.00 | -720.00
+2026-04 | 3170.00 | 3410.00 | -240.00
+2026-05 | 3780.00 | 3673.00 | 107.00
+2026-06 | 4480.00 | 3705.00 | 775.00
+2026-07 | 4900.00 | 3883.00 | 1017.00
+2026-08 | 5230.00 | 5801.00 | -571.00
+2026-09 | 4670.00 | 3942.00 | 728.00
+Linhas retornadas: 7
+
+CONSULTA 8
+conta | situacao | valor_previsto | vencimento | pagamento | valor_realizado
+Aluguel mensal do salão | paid | 1800.00 | 2026-03-01 | 2026-03-01 | 1800.00
+Aluguel mensal do salão | paid | 1800.00 | 2026-04-01 | 2026-04-01 | 1800.00
+Aluguel mensal do salão | paid | 1800.00 | 2026-05-01 | 2026-05-01 | 1800.00
+Aluguel mensal do salão | paid | 1800.00 | 2026-06-01 | 2026-06-01 | 1800.00
+Aluguel mensal do salão | paid | 1800.00 | 2026-07-01 | 2026-07-01 | 1800.00
+Aluguel mensal do salão | paid | 1800.00 | 2026-08-01 | 2026-08-01 | 1800.00
+Reposição urgente de tinturas | pending | 640.00 | 2026-08-08 | 2026-08-09 | 640.00
+Manutenção do lavatório | pending | 350.00 | 2026-08-08 | NULL | NULL
+Conta de energia do salão | pending | 310.00 | 2026-08-12 | 2026-08-09 | 310.00
+Tarifa de conta bancária | paid | 150.00 | 2026-08-15 | 2026-08-10 | 150.00
+Linhas retornadas: 10
+
+CONSULTA 9
+descricao | valor | vencimento | dias_de_atraso
+Reposição urgente de tinturas | 640.00 | 2026-08-08 | 57
+Manutenção do lavatório | 350.00 | 2026-08-08 | 57
+Conta de energia do salão | 310.00 | 2026-08-12 | 53
+Compra de secadores profissionais | 1280.00 | 2026-08-15 | 50
+Internet e telefone | 140.00 | 2026-08-20 | 45
+DAS de agosto | 82.60 | 2026-08-25 | 40
+Campanha de primavera | 360.00 | 2026-08-29 | 36
+Tarifa de conta bancária | 150.00 | 2026-09-15 | 19
+Manutenção do ar-condicionado | 420.00 | 2026-09-15 | 19
+Reposição de produtos profissionais | 780.00 | 2026-09-18 | 16
+Linhas retornadas: 10
+
+CONSULTA 10
+tabela | restricao | definicao
+accounts_user | accounts_user_auth_provider_not_null | NOT NULL auth_provider
+accounts_user | accounts_user_date_joined_not_null | NOT NULL date_joined
+accounts_user | accounts_user_email_key | UNIQUE (email)
+accounts_user | accounts_user_email_not_null | NOT NULL email
+accounts_user | accounts_user_first_name_not_null | NOT NULL first_name
+accounts_user | accounts_user_google_id_not_null | NOT NULL google_id
+accounts_user | accounts_user_id_not_null | NOT NULL id
+accounts_user | accounts_user_is_active_not_null | NOT NULL is_active
+accounts_user | accounts_user_is_staff_not_null | NOT NULL is_staff
+accounts_user | accounts_user_is_superuser_not_null | NOT NULL is_superuser
+accounts_user | accounts_user_last_name_not_null | NOT NULL last_name
+accounts_user | accounts_user_lgpd_consent_given_not_null | NOT NULL lgpd_consent_given
+accounts_user | accounts_user_password_not_null | NOT NULL password
+accounts_user | accounts_user_phone_not_null | NOT NULL phone
+accounts_user | accounts_user_pkey | PRIMARY KEY (id)
+accounts_user | accounts_user_username_key | UNIQUE (username)
+accounts_user | accounts_user_username_not_null | NOT NULL username
+finance_customer | finance_customer_created_at_not_null | NOT NULL created_at
+finance_customer | finance_customer_created_by_id_3596c0bc_fk_accounts_user_id | FOREIGN KEY (created_by_id) REFERENCES accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+finance_customer | finance_customer_document_not_null | NOT NULL document
+finance_customer | finance_customer_email_not_null | NOT NULL email
+finance_customer | finance_customer_id_not_null | NOT NULL id
+finance_customer | finance_customer_is_active_not_null | NOT NULL is_active
+finance_customer | finance_customer_name_not_null | NOT NULL name
+finance_customer | finance_customer_notes_not_null | NOT NULL notes
+finance_customer | finance_customer_organization_id_16bfaeb5_fk_organizat | FOREIGN KEY (organization_id) REFERENCES organizations_organization(id) DEFERRABLE INITIALLY DEFERRED
+finance_customer | finance_customer_organization_id_not_null | NOT NULL organization_id
+finance_customer | finance_customer_phone_not_null | NOT NULL phone
+finance_customer | finance_customer_pkey | PRIMARY KEY (id)
+finance_customer | finance_customer_updated_at_not_null | NOT NULL updated_at
+finance_expense | finance_expense_amount_not_null | NOT NULL amount
+finance_expense | finance_expense_amount_positive | CHECK ((amount > (0)::numeric))
+finance_expense | finance_expense_category_not_null | NOT NULL category
+finance_expense | finance_expense_created_at_not_null | NOT NULL created_at
+finance_expense | finance_expense_created_by_id_913042dd_fk_accounts_user_id | FOREIGN KEY (created_by_id) REFERENCES accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+finance_expense | finance_expense_description_not_null | NOT NULL description
+finance_expense | finance_expense_id_not_null | NOT NULL id
+finance_expense | finance_expense_notes_not_null | NOT NULL notes
+finance_expense | finance_expense_occurred_on_not_null | NOT NULL occurred_on
+finance_expense | finance_expense_organization_id_12584951_fk_organizat | FOREIGN KEY (organization_id) REFERENCES organizations_organization(id) DEFERRABLE INITIALLY DEFERRED
+finance_expense | finance_expense_organization_id_not_null | NOT NULL organization_id
+finance_expense | finance_expense_payment_method_not_null | NOT NULL payment_method
+finance_expense | finance_expense_pkey | PRIMARY KEY (id)
+finance_expense | finance_expense_source_payable_id_bf5d2d88_fk_finance_p | FOREIGN KEY (source_payable_id) REFERENCES finance_payable(id) DEFERRABLE INITIALLY DEFERRED
+finance_expense | finance_expense_source_payable_id_key | UNIQUE (source_payable_id)
+finance_expense | finance_expense_supplier_id_be5267a8_fk_finance_supplier_id | FOREIGN KEY (supplier_id) REFERENCES finance_supplier(id) DEFERRABLE INITIALLY DEFERRED
+finance_expense | finance_expense_updated_at_not_null | NOT NULL updated_at
+finance_payable | finance_payable_amount_not_null | NOT NULL amount
+finance_payable | finance_payable_amount_positive | CHECK ((amount > (0)::numeric))
+finance_payable | finance_payable_category_not_null | NOT NULL category
+finance_payable | finance_payable_created_at_not_null | NOT NULL created_at
+finance_payable | finance_payable_created_by_id_c0e33141_fk_accounts_user_id | FOREIGN KEY (created_by_id) REFERENCES accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+finance_payable | finance_payable_description_not_null | NOT NULL description
+finance_payable | finance_payable_due_date_not_null | NOT NULL due_date
+finance_payable | finance_payable_id_not_null | NOT NULL id
+finance_payable | finance_payable_notes_not_null | NOT NULL notes
+finance_payable | finance_payable_organization_id_5b2b8f9a_fk_organizat | FOREIGN KEY (organization_id) REFERENCES organizations_organization(id) DEFERRABLE INITIALLY DEFERRED
+finance_payable | finance_payable_organization_id_not_null | NOT NULL organization_id
+finance_payable | finance_payable_payment_method_not_null | NOT NULL payment_method
+finance_payable | finance_payable_pkey | PRIMARY KEY (id)
+finance_payable | finance_payable_recurrence_indefinite_not_null | NOT NULL recurrence_indefinite
+finance_payable | finance_payable_recurrence_not_null | NOT NULL recurrence
+finance_payable | finance_payable_recurrence_sequence_check | CHECK ((recurrence_sequence >= 0))
+finance_payable | finance_payable_recurrence_sequence_not_null | NOT NULL recurrence_sequence
+finance_payable | finance_payable_recurrence_total_check | CHECK ((recurrence_total >= 0))
+finance_payable | finance_payable_recurrence_total_not_null | NOT NULL recurrence_total
+finance_payable | finance_payable_status_not_null | NOT NULL status
+finance_payable | finance_payable_supplier_id_09ae4bc1_fk_finance_supplier_id | FOREIGN KEY (supplier_id) REFERENCES finance_supplier(id) DEFERRABLE INITIALLY DEFERRED
+finance_payable | finance_payable_updated_at_not_null | NOT NULL updated_at
+finance_receivable | finance_receivable_amount_not_null | NOT NULL amount
+finance_receivable | finance_receivable_amount_positive | CHECK ((amount > (0)::numeric))
+finance_receivable | finance_receivable_category_not_null | NOT NULL category
+finance_receivable | finance_receivable_created_at_not_null | NOT NULL created_at
+finance_receivable | finance_receivable_created_by_id_b94495a9_fk_accounts_user_id | FOREIGN KEY (created_by_id) REFERENCES accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+finance_receivable | finance_receivable_customer_id_fee789b3_fk_finance_customer_id | FOREIGN KEY (customer_id) REFERENCES finance_customer(id) DEFERRABLE INITIALLY DEFERRED
+finance_receivable | finance_receivable_description_not_null | NOT NULL description
+finance_receivable | finance_receivable_due_date_not_null | NOT NULL due_date
+finance_receivable | finance_receivable_id_not_null | NOT NULL id
+finance_receivable | finance_receivable_notes_not_null | NOT NULL notes
+finance_receivable | finance_receivable_organization_id_94ff8c42_fk_organizat | FOREIGN KEY (organization_id) REFERENCES organizations_organization(id) DEFERRABLE INITIALLY DEFERRED
+finance_receivable | finance_receivable_organization_id_not_null | NOT NULL organization_id
+finance_receivable | finance_receivable_payment_method_not_null | NOT NULL payment_method
+finance_receivable | finance_receivable_pkey | PRIMARY KEY (id)
+finance_receivable | finance_receivable_recurrence_indefinite_not_null | NOT NULL recurrence_indefinite
+finance_receivable | finance_receivable_recurrence_not_null | NOT NULL recurrence
+finance_receivable | finance_receivable_recurrence_sequence_check | CHECK ((recurrence_sequence >= 0))
+finance_receivable | finance_receivable_recurrence_sequence_not_null | NOT NULL recurrence_sequence
+finance_receivable | finance_receivable_recurrence_total_check | CHECK ((recurrence_total >= 0))
+finance_receivable | finance_receivable_recurrence_total_not_null | NOT NULL recurrence_total
+finance_receivable | finance_receivable_status_not_null | NOT NULL status
+finance_receivable | finance_receivable_updated_at_not_null | NOT NULL updated_at
+finance_revenue | finance_revenue_amount_not_null | NOT NULL amount
+finance_revenue | finance_revenue_amount_positive | CHECK ((amount > (0)::numeric))
+finance_revenue | finance_revenue_category_not_null | NOT NULL category
+finance_revenue | finance_revenue_created_at_not_null | NOT NULL created_at
+finance_revenue | finance_revenue_created_by_id_37d1a506_fk_accounts_user_id | FOREIGN KEY (created_by_id) REFERENCES accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+finance_revenue | finance_revenue_customer_id_fbfcc9d8_fk_finance_customer_id | FOREIGN KEY (customer_id) REFERENCES finance_customer(id) DEFERRABLE INITIALLY DEFERRED
+finance_revenue | finance_revenue_description_not_null | NOT NULL description
+finance_revenue | finance_revenue_id_not_null | NOT NULL id
+finance_revenue | finance_revenue_notes_not_null | NOT NULL notes
+finance_revenue | finance_revenue_occurred_on_not_null | NOT NULL occurred_on
+finance_revenue | finance_revenue_organization_id_4411fb9c_fk_organizat | FOREIGN KEY (organization_id) REFERENCES organizations_organization(id) DEFERRABLE INITIALLY DEFERRED
+finance_revenue | finance_revenue_organization_id_not_null | NOT NULL organization_id
+finance_revenue | finance_revenue_payment_method_not_null | NOT NULL payment_method
+finance_revenue | finance_revenue_pkey | PRIMARY KEY (id)
+finance_revenue | finance_revenue_source_receivable_id_6b35de40_fk_finance_r | FOREIGN KEY (source_receivable_id) REFERENCES finance_receivable(id) DEFERRABLE INITIALLY DEFERRED
+finance_revenue | finance_revenue_source_receivable_id_key | UNIQUE (source_receivable_id)
+finance_revenue | finance_revenue_updated_at_not_null | NOT NULL updated_at
+finance_supplier | finance_supplier_created_at_not_null | NOT NULL created_at
+finance_supplier | finance_supplier_created_by_id_31745404_fk_accounts_user_id | FOREIGN KEY (created_by_id) REFERENCES accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+finance_supplier | finance_supplier_document_not_null | NOT NULL document
+finance_supplier | finance_supplier_email_not_null | NOT NULL email
+finance_supplier | finance_supplier_id_not_null | NOT NULL id
+finance_supplier | finance_supplier_is_active_not_null | NOT NULL is_active
+finance_supplier | finance_supplier_name_not_null | NOT NULL name
+finance_supplier | finance_supplier_notes_not_null | NOT NULL notes
+finance_supplier | finance_supplier_organization_id_168680f2_fk_organizat | FOREIGN KEY (organization_id) REFERENCES organizations_organization(id) DEFERRABLE INITIALLY DEFERRED
+finance_supplier | finance_supplier_organization_id_not_null | NOT NULL organization_id
+finance_supplier | finance_supplier_phone_not_null | NOT NULL phone
+finance_supplier | finance_supplier_pkey | PRIMARY KEY (id)
+finance_supplier | finance_supplier_updated_at_not_null | NOT NULL updated_at
+notifications_alert | notifications_alert_created_at_not_null | NOT NULL created_at
+notifications_alert | notifications_alert_id_not_null | NOT NULL id
+notifications_alert | notifications_alert_message_not_null | NOT NULL message
+notifications_alert | notifications_alert_organization_id_1b6353cf_fk_organizat | FOREIGN KEY (organization_id) REFERENCES organizations_organization(id) DEFERRABLE INITIALLY DEFERRED
+notifications_alert | notifications_alert_organization_id_not_null | NOT NULL organization_id
+notifications_alert | notifications_alert_payload_not_null | NOT NULL payload
+notifications_alert | notifications_alert_pkey | PRIMARY KEY (id)
+notifications_alert | notifications_alert_priority_not_null | NOT NULL priority
+notifications_alert | notifications_alert_source_entity_not_null | NOT NULL source_entity
+notifications_alert | notifications_alert_title_not_null | NOT NULL title
+notifications_alert | notifications_alert_type_not_null | NOT NULL type
+notifications_alert | notifications_alert_updated_at_not_null | NOT NULL updated_at
+organizations_membership | organizations_member_invited_by_id_85a6302b_fk_accounts_ | FOREIGN KEY (invited_by_id) REFERENCES accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+organizations_membership | organizations_member_organization_id_6889aa64_fk_organizat | FOREIGN KEY (organization_id) REFERENCES organizations_organization(id) DEFERRABLE INITIALLY DEFERRED
+organizations_membership | organizations_membership_created_at_not_null | NOT NULL created_at
+organizations_membership | organizations_membership_id_not_null | NOT NULL id
+organizations_membership | organizations_membership_invite_email_not_null | NOT NULL invite_email
+organizations_membership | organizations_membership_invite_token_key | UNIQUE (invite_token)
+organizations_membership | organizations_membership_invited_at_not_null | NOT NULL invited_at
+organizations_membership | organizations_membership_organization_id_not_null | NOT NULL organization_id
+organizations_membership | organizations_membership_pkey | PRIMARY KEY (id)
+organizations_membership | organizations_membership_role_not_null | NOT NULL role
+organizations_membership | organizations_membership_status_not_null | NOT NULL status
+organizations_membership | organizations_membership_updated_at_not_null | NOT NULL updated_at
+organizations_membership | organizations_membership_user_id_a8e72055_fk_accounts_user_id | FOREIGN KEY (user_id) REFERENCES accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+organizations_organization | organizations_organi_created_by_id_fd8f65e6_fk_accounts_ | FOREIGN KEY (created_by_id) REFERENCES accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+organizations_organization | organizations_organization_address_complement_not_null | NOT NULL address_complement
+organizations_organization | organizations_organization_business_category_not_null | NOT NULL business_category
+organizations_organization | organizations_organization_business_name_not_null | NOT NULL business_name
+organizations_organization | organizations_organization_city_not_null | NOT NULL city
+organizations_organization | organizations_organization_cnae_code_not_null | NOT NULL cnae_code
+organizations_organization | organizations_organization_cnae_description_not_null | NOT NULL cnae_description
+organizations_organization | organizations_organization_cnpj_key | UNIQUE (cnpj)
+organizations_organization | organizations_organization_cnpj_not_null | NOT NULL cnpj
+organizations_organization | organizations_organization_created_at_not_null | NOT NULL created_at
+organizations_organization | organizations_organization_created_by_id_not_null | NOT NULL created_by_id
+organizations_organization | organizations_organization_ibge_code_not_null | NOT NULL ibge_code
+organizations_organization | organizations_organization_id_not_null | NOT NULL id
+organizations_organization | organizations_organization_initial_balance_not_null | NOT NULL initial_balance
+organizations_organization | organizations_organization_neighborhood_not_null | NOT NULL neighborhood
+organizations_organization | organizations_organization_number_not_null | NOT NULL number
+organizations_organization | organizations_organization_pkey | PRIMARY KEY (id)
+organizations_organization | organizations_organization_postal_code_not_null | NOT NULL postal_code
+organizations_organization | organizations_organization_registration_status_not_null | NOT NULL registration_status
+organizations_organization | organizations_organization_state_not_null | NOT NULL state
+organizations_organization | organizations_organization_status_not_null | NOT NULL status
+organizations_organization | organizations_organization_street_not_null | NOT NULL street
+organizations_organization | organizations_organization_timezone_not_null | NOT NULL timezone
+organizations_organization | organizations_organization_trade_name_not_null | NOT NULL trade_name
+organizations_organization | organizations_organization_updated_at_not_null | NOT NULL updated_at
+Linhas retornadas: 171
+
+CONSULTA 11
+tabela | indice | definicao
+finance_customer | finance_customer_unique_document_per_org | CREATE UNIQUE INDEX finance_customer_unique_document_per_org ON public.finance_customer USING btree (organization_id, document) WHERE (NOT ((document)::text = ''::text))
+finance_supplier | finance_supplier_unique_document_per_org | CREATE UNIQUE INDEX finance_supplier_unique_document_per_org ON public.finance_supplier USING btree (organization_id, document) WHERE (NOT ((document)::text = ''::text))
+organizations_membership | unique_membership_per_user_organization | CREATE UNIQUE INDEX unique_membership_per_user_organization ON public.organizations_membership USING btree (organization_id, user_id) WHERE (user_id IS NOT NULL)
+organizations_membership | unique_pending_invite_per_email_organization | CREATE UNIQUE INDEX unique_pending_invite_per_email_organization ON public.organizations_membership USING btree (organization_id, invite_email) WHERE ((status)::text = 'invited'::text)
+Linhas retornadas: 4

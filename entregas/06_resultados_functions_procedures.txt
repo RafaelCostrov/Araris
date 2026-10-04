@@ -1,0 +1,70 @@
+ARARIS - PARTE 3: FUNCTIONS E PROCEDURES EM POSTGRESQL
+Captura: 2026-10-04T14:03:44-03:00
+Duas functions e duas procedures em PL/pgSQL, instaladas no schema academic.
+Demonstração executada com a empresa fictícia Studio Millena.
+As escritas da demonstração foram revertidas pelo ROLLBACK final.
+
+RESULTADO 1
+routine_schema | routine_name | routine_type | data_type
+academic | fn_resultado_financeiro | FUNCTION | numeric
+academic | fn_resumo_financeiro_formatado | FUNCTION | text
+academic | sp_gerar_alertas_vencimentos | PROCEDURE | NULL
+academic | sp_gerar_fechamento_mensal | PROCEDURE | NULL
+Linhas: 4
+
+RESULTADO 2
+empresa | resultado_setembro
+Studio Millena | 728.00
+Linhas: 1
+
+RESULTADO 3
+resumo
+Studio Millena | Período: 09/2026 | Resultado: R$ 728,00 | Situação: Superávit
+Linhas: 1
+
+RESULTADO 4
+mes | resultado
+03/2026 | -720.00
+04/2026 | -240.00
+05/2026 | 107.00
+06/2026 | 775.00
+07/2026 | 1017.00
+08/2026 | -571.00
+09/2026 | 728.00
+Linhas: 7
+
+RESULTADO 7
+conta | prioridade | dias_atraso | mensagem
+Manutenção do lavatório | critical | 57 | A conta "Manutenção do lavatório", no valor de R$ 350,00, venceu em 08/08/2026 e está atrasada há 57 dia(s).
+Compra de secadores profissionais | critical | 50 | A conta "Compra de secadores profissionais", no valor de R$ 1280,00, venceu em 15/08/2026 e está atrasada há 50 dia(s).
+Internet e telefone | critical | 45 | A conta "Internet e telefone", no valor de R$ 140,00, venceu em 20/08/2026 e está atrasada há 45 dia(s).
+DAS de agosto | critical | 40 | A conta "DAS de agosto", no valor de R$ 82,60, venceu em 25/08/2026 e está atrasada há 40 dia(s).
+Campanha de primavera | critical | 36 | A conta "Campanha de primavera", no valor de R$ 360,00, venceu em 29/08/2026 e está atrasada há 36 dia(s).
+Tarifa de conta bancária | high | 19 | A conta "Tarifa de conta bancária", no valor de R$ 150,00, venceu em 15/09/2026 e está atrasada há 19 dia(s).
+Manutenção do ar-condicionado | high | 19 | A conta "Manutenção do ar-condicionado", no valor de R$ 420,00, venceu em 15/09/2026 e está atrasada há 19 dia(s).
+Reposição de produtos profissionais | high | 16 | A conta "Reposição de produtos profissionais", no valor de R$ 780,00, venceu em 18/09/2026 e está atrasada há 16 dia(s).
+Luz | high | 14 | A conta "Luz", no valor de R$ 135,00, venceu em 20/09/2026 e está atrasada há 14 dia(s).
+Internet e telefone de setembro | high | 14 | A conta "Internet e telefone de setembro", no valor de R$ 145,00, venceu em 20/09/2026 e está atrasada há 14 dia(s).
+Água | high | 14 | A conta "Água", no valor de R$ 53,00, venceu em 20/09/2026 e está atrasada há 14 dia(s).
+Luz | high | 14 | A conta "Luz", no valor de R$ 120,00, venceu em 20/09/2026 e está atrasada há 14 dia(s).
+Luz | high | 14 | A conta "Luz", no valor de R$ 200,00, venceu em 20/09/2026 e está atrasada há 14 dia(s).
+DAS de setembro | high | 9 | A conta "DAS de setembro", no valor de R$ 82,60, venceu em 25/09/2026 e está atrasada há 9 dia(s).
+Campanha promocional de primavera | high | 6 | A conta "Campanha promocional de primavera", no valor de R$ 390,00, venceu em 28/09/2026 e está atrasada há 6 dia(s).
+Internet Claro | high | 4 | A conta "Internet Claro", no valor de R$ 90,00, venceu em 30/09/2026 e está atrasada há 4 dia(s).
+Aluguel mensal do salão | high | 3 | A conta "Aluguel mensal do salão", no valor de R$ 1800,00, venceu em 01/10/2026 e está atrasada há 3 dia(s).
+Linhas: 17
+
+RESULTADO 8
+alertas_abertos | contas_distintas | sem_duplicacao
+17 | 17 | True
+Linhas: 1
+
+RESULTADO 9
+empresa | mes_referencia | total_receitas | total_despesas | resultado
+Studio Millena | 2026-09-01 | 4670.00 | 3942.00 | 728.00
+Linhas: 1
+
+A rotina de alertas persiste registros em notifications_alert; não envia push nem cria destinatários.
+O fechamento é recalculável por empresa/mês; não é um encerramento contábil imutável.
+As rotinas foram demonstradas por SELECT e CALL. Não foi implementado endpoint, agendador ou integração Java.
+A implementação usa PostgreSQL/PL/pgSQL, não Oracle/PL/SQL.
